@@ -7,6 +7,7 @@ use crate::time::Timer;
 pub type FormatFunc = fn(FormatRecord) -> String;
 
 #[derive(Clone)]
+/// Custom formatter which adds into a log sink
 pub struct LogFormat
 {
     time_fmt: String,
@@ -14,10 +15,33 @@ pub struct LogFormat
 }
 
 impl LogFormat {
-    pub fn new(time_fmt: &str, f: FormatFunc) -> Self {
+
+    /// # Arguments
+    ///
+    /// time_fmt: refer to chrono::format::strftime.
+    ///
+    /// format_fn:
+    /// Since std::fmt only support compile time format,
+    /// you have to write a static function to format the log line
+    ///
+    /// # Example
+    /// ```
+    /// use captains_log::{LogFile, LogFormat, FormatRecord};
+    /// fn format_f(r: FormatRecord) -> String {
+    ///     let time = r.time();
+    ///     let level = r.level();
+    ///     let msg = r.msg();
+    ///     let req_id = r.key("req_id");
+    ///     format!("[{time}][{level}] {msg}{req_id}\n").to_string()
+    /// }
+    /// let log_format = LogFormat::new("%Y-%m-%d %H:%M:%S%.6f", format_f);
+    /// let log_sink = LogFile::new("/tmp", "test.log", log::Level::Info, log_format);
+    /// ```
+
+    pub fn new(time_fmt: &str, format_fn: FormatFunc) -> Self {
         Self{
             time_fmt: time_fmt.to_string(),
-            format_fn: f,
+            format_fn,
         }
     }
 

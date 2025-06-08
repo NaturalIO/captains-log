@@ -52,7 +52,8 @@ impl LoggerSinkTrait for LoggerSinkFile {
 
     fn log(&self, now: &Timer, r: &Record) {
         if r.level() <= self.max_level {
-            // ArcSwap ensure file fd is not close during reopen for log rotation
+            // ArcSwap ensure file fd is not close during reopen for log rotation,
+            // in case of panic during write.
             if let Some(file) = self.f.load_full() {
                 // Get a stable buffer,
                 // for concurrently write to file from multi process.

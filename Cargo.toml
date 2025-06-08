@@ -2,6 +2,13 @@
 name = "captains-log"
 version = "0.1.0"
 edition = "2021"
+authors = ["plan <frostyplanet@gmail.com>"]
+categories = ["development-tools::debugging"]
+description = """
+A light-weight customizable logger which have concurrency in mind.
+Allow for multi-process/thread/coroutine programing,
+and can change log setting on the fly.
+"""
 
 [dependencies]
 log = { version = "0.4", features = ["std", "kv_unstable"] }

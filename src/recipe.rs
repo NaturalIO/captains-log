@@ -6,6 +6,10 @@ use crate::{
 
 pub const DEFAULT_TIME: &'static str = "%Y-%m-%d %H:%M:%S%.6f";
 
+/// In this funtion, setup two log files.
+/// One for debug purpose, with code file line to track problem
+/// One for error log.
+/// See the source for details.
 pub fn split_error_file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
     fn debug_format_f(r: FormatRecord) -> String {
         let time = r.time();
@@ -37,9 +41,21 @@ pub fn split_error_file_logger(dir: &str, name: &str, max_level: Level) -> Build
     let error_file = LogFile::new(dir, &format!("{}.log.wf", name).to_string(),
         Level::Error,
         err_format);
-    let config = Builder::default()
+
+    let mut config = Builder::default()
         .signal(signal_hook::consts::SIGUSR1)
         .file(debug_file)
         .file(error_file);
+
+    // panic on debuging
+    #[cfg(debug_assertions)]
+    {
+        config.continue_when_panic = false;
+    }
+    // do not panic on release
+    #[cfg(not(debug_assertions))]
+    {
+        config.continue_when_panic = true;
+    }
     return config
 }

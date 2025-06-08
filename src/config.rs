@@ -6,11 +6,26 @@ use crate::{
     file_impl::LoggerSinkFile,
 };
 
+/// Global config to setup logger
+/// See crate::recipe for usage
+
 #[derive(Default)]
 pub struct Builder {
+
+    /// Force re-initialize GlobalLogger even it exists,
+    /// useful to setup different logger in multiple types of test cases
     pub force: bool,
+
+    /// Listen for signal of log-rotate
     pub rotation_signals: Vec<i32>,
+
+    /// Hookup to log error when panic
     pub panic: bool,
+
+    /// Whether to exit program after panic
+    pub continue_when_panic: bool,
+
+    /// Different types of log sink
     pub sinks: Vec<Box<dyn SinkConfigTrait>>
 }
 
@@ -21,16 +36,19 @@ impl Builder {
         Self::default()
     }
 
+    /// Add log-rotate signal
     pub fn signal(mut self, signal: i32) -> Self {
         self.rotation_signals.push(signal);
         self
     }
 
+    /// Add file sink
     pub fn file(mut self, config: LogFile) -> Self {
         self.sinks.push(Box::new(config));
         self
     }
 
+    /// Return the max log level in the log sinks
     pub fn get_max_level(&self) -> LevelFilter {
         let mut max_level = Level::Error;
         for sink in &self.sinks {
@@ -50,11 +68,21 @@ pub trait SinkConfigTrait {
     fn build(&self) -> LoggerSink;
 }
 
+/// Config for file sink
 pub struct LogFile {
+
+    /// Directory path
     pub dir: String,
+
+    /// max log level in this file
     pub level: Level,
+
+    /// filename
     pub name: String,
-    pub format: LogFormat,
+
+    pub(crate) format: LogFormat,
+
+    /// path: dir/name
     pub file_path: Box<Path>,
 }
 

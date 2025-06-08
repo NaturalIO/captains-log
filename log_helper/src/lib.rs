@@ -1,14 +1,6 @@
 #![recursion_limit = "128"]
 
-//! #[logfn]
-//! fn call_isan(num: &str) -> Result<Success, Error> {
-//!     if num.len() >= 10 && num.len() <= 15 {
-//!         Ok(Success)
-//!     } else {
-//!         Err(Error)
-//!     }
-//! }
-//!
+
 extern crate proc_macro;
 extern crate syn;
 use proc_macro2::TokenStream;
@@ -74,16 +66,27 @@ fn generate_function(closure: &ExprClosure, expressions: FormattedAttributes) ->
 
 /// Logs the result of the function it's above.
 /// # Examples
+///
 /// ``` rust
-/// extern crate log_helper;
+/// #[macro_use]
+/// extern crate captains_log;
 /// # use std::{net::*, io::{self, Write}};
+///
+/// #[logfn]
+/// fn call_isan(num: &str) -> Result<Success, Error> {
+///     if num.len() >= 10 && num.len() <= 15 {
+///         Ok(Success)
+///     } else {
+///         Err(Error)
+///     }
+/// }
+///
 /// #[logfn(err = "Error", fmt = "Failed Sending Packet: {:?}")]
 /// fn send_hi(addr: SocketAddr) -> Result<(), io::Error> {
 ///     let mut stream = TcpStream::connect(addr)?;
 ///     stream.write(b"Hi!")?;
 ///     Ok( () )
 /// }
-///
 ///
 /// ```
 #[proc_macro_attribute]

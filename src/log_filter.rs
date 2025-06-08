@@ -7,6 +7,18 @@ use std::{
 
 use log::{kv::*, *};
 
+/// A LogFilter supports concurrent control the log level.
+/// Use in combine with macros  logger_XXX
+///
+/// # Example
+/// ```
+/// use captains_log::*;
+/// let logger = LogFilter::new(123);
+/// logger.set_level(log::Level::Error);
+/// // info will be filtered
+/// logger_info!(logger, "using LogFilter {}", "ok");
+/// logger_error!(logger, "error occur");
+/// ```
 pub struct LogFilter {
     req_id: u64,
     req_str: [u8; 16],
@@ -34,6 +46,7 @@ impl LogFilter {
         s
     }
 
+    /// When LogFilter is shared in Arc, allows concurrently changing log level filter
     #[inline]
     pub fn set_level(&self, level: Level) {
         self.max_level.store(level as usize, Ordering::Relaxed);
@@ -44,6 +57,7 @@ impl LogFilter {
         self.max_level.load(Ordering::Relaxed)
     }
 
+    #[doc(hidden)]
     #[inline(always)]
     pub fn _private_api_log(
         &self,

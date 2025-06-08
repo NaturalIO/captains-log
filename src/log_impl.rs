@@ -17,7 +17,7 @@ use crate::{
 */
 
 #[enum_dispatch]
-pub trait LoggerSinkTrait {
+pub(crate) trait LoggerSinkTrait {
 
     fn reopen(&self) -> std::io::Result<()>;
 
@@ -82,6 +82,8 @@ lazy_static! {
     static ref GLOBAL_LOGGER: Mutex<GlobalLogger> = Mutex::new(GlobalLogger { sinks: None });
 }
 
+/// log handle for panic hook
+#[doc(hidden)]
 pub fn log_panic(info: &std::panic::PanicHookInfo) {
     let bt = Backtrace::new();
     let mut record = log::Record::builder();
@@ -102,21 +104,17 @@ pub fn log_panic(info: &std::panic::PanicHookInfo) {
     );
 }
 
-fn panic_hook(info: &std::panic::PanicHookInfo) {
+fn panic_and_exit_hook(info: &std::panic::PanicHookInfo) {
     log_panic(info);
-    process_exit();
-}
-
-#[cfg(debug_assertions)]
-fn process_exit() {
     std::process::exit(exitcode::IOERR);
 }
 
-#[cfg(not(debug_assertions))]
-fn process_exit() {
+fn panic_no_exit_hook(info: &std::panic::PanicHookInfo) {
+    log_panic(info);
     eprint!("not debug version, so don't exit process");
 }
 
+/// Initialize global logger from Builder
 pub fn setup_log(builder: Builder) {
     {
         let mut global_logger = GLOBAL_LOGGER.lock();
@@ -130,7 +128,11 @@ pub fn setup_log(builder: Builder) {
             Ok(true) => {}
         }
         set_max_level(builder.get_max_level());
-        std::panic::set_hook(Box::new(panic_hook));
+        if builder.continue_when_panic {
+            std::panic::set_hook(Box::new(panic_no_exit_hook));
+        } else {
+            std::panic::set_hook(Box::new(panic_and_exit_hook));
+        }
     }
     if builder.rotation_signals.len() > 0 {
         let signals = builder.rotation_signals.clone();
