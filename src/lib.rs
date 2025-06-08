@@ -1,6 +1,8 @@
-//! A light-weight logger implementation base on  the crate `log`.
+//! # captains-log
 //!
-//! # Features
+//! A light-weight logger for rust, implementation base on the crate `log`.
+//!
+//! ## Features
 //!
 //! * Allow customize log format and time format.
 //!
@@ -16,7 +18,7 @@
 //! * Provides `LogFilter` for coroutine-based programs. You can set req_id in LogFilter and
 //! output to log files
 //!
-//! # Dependency
+//! ## Dependency
 //!
 //! ``` toml
 //! [dependencies]
@@ -24,7 +26,7 @@
 //! captains_log = "0.1"
 //! ```
 //!
-//! # Fast setup eample:
+//! ## Fast setup eample:
 //!
 //! ```rust
 //! /// #[macro_use]
@@ -47,7 +49,7 @@
 //!
 //! ```
 //!
-//! # Customize format example
+//! ## Customize format example
 //!
 //! ``` rust
 //! extern crate signal_hook;
