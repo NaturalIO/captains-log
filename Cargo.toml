@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 authors = ["plan <frostyplanet@gmail.com>"]
 categories = ["development-tools::debugging"]
+homepage = "https://github.com/NaturalIO/captains-log"
+documentation = "https://docs.rs/captains-log"
+license = "BSD"
 description = """
 A light-weight customizable logger which have concurrency in mind.
 Allow for multi-process/thread/coroutine programing,
