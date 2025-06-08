@@ -2,6 +2,14 @@
 
 A light-weight customizable logger implementation for rust
 
+[![crates.io][cratesio-image]][cratesio]
+[![docs.rs][docsrs-image]][docsrs]
+
+[cratesio-image]: https://img.shields.io/crates/v/captains-log.svg
+[cratesio]: https://crates.io/crates/captains-log
+[docsrs-image]: https://docs.rs/captains-log/badge.svg
+[docsrs]: https://docs.rs/captains-log
+
 ## Features
 
 * Allow customize log format and time format.
