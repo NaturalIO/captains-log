@@ -17,12 +17,11 @@ libc = { version= "0.2.6" }
 chrono = "0.4"
 parking_lot = "0"
 backtrace = "0.3"
-log-helper = { path = "./log_helper", version = "0.1.0" }
+captains-log-helper = "0.1.0"
 exitcode = "1"
 lazy_static = "1.4"
 arc-swap = "1"
 enum_dispatch = "0.3"
 
 [dev-dependencies]
-std-logger = "0"
 fmutex = "0"

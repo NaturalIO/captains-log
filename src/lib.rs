@@ -80,7 +80,7 @@
 
 
 extern crate log;
-extern crate log_helper;
+extern crate captains_log_helper;
 extern crate signal_hook;
 
 #[macro_use]
@@ -98,7 +98,7 @@ pub mod macros;
 mod log_filter;
 
 pub use log::{Level as LogLevel, LevelFilter as LogLevelFilter};
-pub use log_helper::logfn;
+pub use captains_log_helper::logfn;
 
 pub use self::{
     config::{Builder, LogFile},
