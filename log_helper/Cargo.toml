@@ -6,7 +6,7 @@ edition = "2021"
 description = "Procedural Macros for logging for tests"
 homepage = "https://github.com/NaturalIO/captains-log"
 documentation = "https://docs.rs/captains-log"
-license = "BSD"
+license = "BSD-1-Clause"
 
 [dependencies]
 darling = "0.10.0"
