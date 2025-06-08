@@ -1,0 +1,45 @@
+use log::Level;
+use crate::{
+    config::{Builder, LogFile},
+    formatter::{LogFormat, FormatRecord},
+};
+
+pub const DEFAULT_TIME: &'static str = "%Y-%m-%d %H:%M:%S%.6f";
+
+pub fn split_error_file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
+    fn debug_format_f(r: FormatRecord) -> String {
+        let time = r.time();
+        let level = r.level();
+        let file = r.file();
+        let line = r.line();
+        let msg = r.msg();
+        let req_id = r.key("req_id");
+        format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
+    }
+    fn error_format_f(r: FormatRecord) -> String {
+        let time = r.time();
+        let level = r.level();
+        let msg = r.msg();
+        let req_id = r.key("req_id");
+        format!("[{time}][{level}] {msg}{req_id}\n").to_string()
+    }
+    let debug_format = LogFormat::new(DEFAULT_TIME,
+        debug_format_f,
+    );
+
+    let err_format = LogFormat::new(
+        DEFAULT_TIME,
+        error_format_f,
+    );
+    let debug_file = LogFile::new(
+        dir, &format!("{}.log", name).to_string(), max_level,
+        debug_format);
+    let error_file = LogFile::new(dir, &format!("{}.log.wf", name).to_string(),
+        Level::Error,
+        err_format);
+    let config = Builder::default()
+        .signal(signal_hook::consts::SIGUSR1)
+        .file(debug_file)
+        .file(error_file);
+    return config
+}
