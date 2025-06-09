@@ -26,6 +26,13 @@ Atomic line appending can be done on Linux
 * Provides `LogFilter` for coroutine-based programs. You can set req_id in LogFilter and
 output to log files
 
+* For test suits usage:
+
+  Allow dynamic reconfigure logger setting in different test function.
+(NOTE: currently signal_listener does not support reconfigure).
+
+  Provides an attribute macro #[logfn] to wrap test function. Logging test-start and test-end.
+
 # Dependency
 
 ``` toml
