@@ -1,4 +1,7 @@
 use std::thread;
+use std::mem::transmute;
+use std::sync::Arc;
+use arc_swap::ArcSwap;
 use backtrace::Backtrace;
 use lazy_static::lazy_static;
 use log::*;
@@ -10,11 +13,6 @@ use crate::{
     time::Timer,
 };
 
-/*
- * This is logger that support multi-thread appending write without lock.
- * Because Log trait prevent internal mutability, File has Sync & Send but need mut to write, and
- * RefCell has !Send.  So the only way to achieve lock-free is to use unsafe libc call.
-*/
 
 #[enum_dispatch]
 pub(crate) trait LoggerSinkTrait {
@@ -29,23 +27,70 @@ pub enum LoggerSink{
     File(LoggerSinkFile),
 }
 
-pub struct GlobalLogger {
-    sinks: Option<Vec<LoggerSink>>, // Global static needs initialization when declaring, so we give it a wrapper struct with empty internal
+/// Global static structure to hold the logger
+struct GlobalLogger {
+    // Global static needs initialization when declaring,
+    // default to be empty
+    inner: Option<LoggerInner>,
+}
+
+enum LoggerInner {
+    Once(Vec<LoggerSink>),
+    // using ArcSwap has more cost
+    Dyn(ArcSwap<Vec<LoggerSink>>),
+}
+
+fn panic_or_error() {
+    #[cfg(debug_assertions)]
+    {
+        panic!("GlobalLogger cannot be initialized twice on dynamic==false");
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        eprintln!("GlobalLogger cannot be initialized twice on dynamic==false");
+    }
 }
 
 
+impl LoggerInner {
+
+    #[allow(dead_code)]
+    fn set(&self, sinks: Vec<LoggerSink>) {
+        match &self {
+            Self::Once(_)=>{
+                panic_or_error();
+            }
+            Self::Dyn(d)=>{
+                d.store(Arc::new(sinks));
+            }
+        }
+    }
+}
+
 impl GlobalLogger {
     pub fn reopen(&mut self) -> std::io::Result<()> {
-        if let Some(sinks) = self.sinks.as_ref() {
-            for sink in sinks {
-                sink.reopen()?;
+        if let Some(inner) = self.inner.as_ref() {
+            match &inner {
+                LoggerInner::Once(inner)=>{
+                    for sink in inner.iter() {
+                        sink.reopen()?;
+                    }
+                }
+                LoggerInner::Dyn(inner)=>{
+                    let sinks = inner.load();
+                    for sink in sinks.iter() {
+                        sink.reopen()?;
+                    }
+                }
             }
         }
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn init(&mut self, builder: &Builder) -> std::io::Result<bool> {
-        if !builder.force || self.sinks.is_some() {
+        if !builder.dynamic && self.inner.is_some() {
+            panic_or_error();
             return Ok(false);
         }
         let mut sinks = Vec::new();
@@ -54,9 +99,18 @@ impl GlobalLogger {
             logger_sink.reopen()?;
             sinks.push(logger_sink);
         }
-        self.sinks.replace(sinks);
 
-        let _ = unsafe { set_logger(std::mem::transmute::<&Self, &'static Self>(self)) };
+        if let Some(inner) = self.inner.as_ref() {
+            inner.set(sinks);
+        } else {
+            if builder.dynamic {
+                self.inner.replace(LoggerInner::Dyn(ArcSwap::new(Arc::new(sinks))));
+            } else {
+                self.inner.replace(LoggerInner::Once(sinks));
+            }
+        }
+
+        let _ = unsafe { set_logger(transmute::<&Self, &'static Self>(self)) };
         Ok(true)
     }
 }
@@ -68,9 +122,19 @@ impl Log for GlobalLogger {
 
     fn log(&self, r: &Record) {
         let now = Timer::new();
-        if let Some(sinks) = self.sinks.as_ref() {
-            for sink in sinks {
-                sink.log(&now, r);
+        if let Some(inner) = self.inner.as_ref() {
+            match &inner {
+                LoggerInner::Once(inner)=>{
+                    for sink in inner.iter() {
+                        sink.log(&now, r);
+                    }
+                }
+                LoggerInner::Dyn(inner)=>{
+                    let sinks = inner.load();
+                    for sink in sinks.iter() {
+                        sink.log(&now, r);
+                    }
+                }
             }
         }
     }
@@ -79,7 +143,9 @@ impl Log for GlobalLogger {
 }
 
 lazy_static! {
-    static ref GLOBAL_LOGGER: Mutex<GlobalLogger> = Mutex::new(GlobalLogger { sinks: None });
+    // Mutex only access on init and reopen, bypassed while logging,
+    // because crate log only use const raw pointer to access GlobalLogger.
+    static ref GLOBAL_LOGGER: Mutex<GlobalLogger> = Mutex::new(GlobalLogger { inner: None });
 }
 
 /// log handle for panic hook
@@ -115,16 +181,16 @@ fn panic_no_exit_hook(info: &std::panic::PanicHookInfo) {
 }
 
 /// Initialize global logger from Builder
-pub fn setup_log(builder: Builder) {
+pub fn setup_log(builder: Builder) -> Result<(), ()> {
     {
         let mut global_logger = GLOBAL_LOGGER.lock();
 
         match global_logger.init(&builder) {
             Err(e) => {
                 println!("Initialize logger failed: {:?}", e);
-                return;
+                return Err(());
             }
-            Ok(false) => return,
+            Ok(false) => return Err(()),
             Ok(true) => {}
         }
         set_max_level(builder.get_max_level());
@@ -144,4 +210,5 @@ pub fn setup_log(builder: Builder) {
             }
         });
     }
+    Ok(())
 }

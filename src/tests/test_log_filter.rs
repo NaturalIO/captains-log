@@ -12,9 +12,9 @@ fn test_sub_logger() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_filter", Level::Trace);
-    builder.force = true;
+    builder.dynamic = true;
     clear_test_files(&builder);
-    setup_log(builder);
+    setup_log(builder).expect("setup_log");
 
     let logger = LogFilter::new(111);
     logger_trace!(logger, "hahaha {} {}", "hello", "world");
@@ -30,9 +30,9 @@ fn test_logger_assert() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_filter", Level::Trace);
-    builder.force = true;
+    builder.dynamic = true;
     clear_test_files(&builder);
-    setup_log(builder);
+    setup_log(builder).expect("setup_log");
 
     let logger = LogFilter::new(222);
     // Change the following condition to see the result
@@ -45,9 +45,9 @@ fn test_logger_debug_assert_cond() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_filter", Level::Trace);
-    builder.force = true;
+    builder.dynamic = true;
     clear_test_files(&builder);
-    setup_log(builder);
+    setup_log(builder).expect("setup_log");
     let logger = LogFilter::new(333);
     // Change the following condition to see the result
     logger_assert!(logger, true);
@@ -59,9 +59,9 @@ fn test_logger_assert_eq() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_filter", Level::Trace);
-    builder.force = true;
+    builder.dynamic = true;
     clear_test_files(&builder);
-    setup_log(builder);
+    setup_log(builder).expect("setup_log");
 
     let logger = LogFilter::new(444);
     // Change the following condition to see the result
@@ -74,9 +74,9 @@ fn test_logger_debug_assert_eq() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_filter", Level::Trace);
-    builder.force = true;
+    builder.dynamic = true;
     clear_test_files(&builder);
-    setup_log(builder);
+    setup_log(builder).expect("setup_log");
 
     let logger = LogFilter::new(555);
     logger_debug_assert_eq!(logger, 1, 1);

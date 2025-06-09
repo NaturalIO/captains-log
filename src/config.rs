@@ -12,9 +12,13 @@ use crate::{
 #[derive(Default)]
 pub struct Builder {
 
-    /// Force re-initialize GlobalLogger even it exists,
-    /// useful to setup different logger in multiple types of test cases
-    pub force: bool,
+    /// When dynamic==true,
+    ///   Can safely re-initialize GlobalLogger even it exists,
+    ///   useful to setup different types of logger in test suits.
+    /// When dynamic==false,
+    ///   Only initialize once, logger sinks setting cannot be change afterwards.
+    ///   More efficient for production environment.
+    pub dynamic: bool,
 
     /// Listen for signal of log-rotate
     pub rotation_signals: Vec<i32>,
