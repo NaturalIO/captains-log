@@ -43,17 +43,19 @@ captains_log = "0.1"
 
 # Fast setup eample:
 
+You can refer to various preset recipe in `recipe` module, including console & file output.
+
 ```rust
-/// #[macro_use]
-/// extern crate captains_log;
-/// #[macro_use]
-/// extern crate log;
+// #[macro_use]
+// extern crate captains_log;
+// #[macro_use]
+// extern crate log;
+
 use log::{debug, info, error};
-use captains_log::*;
 use captains_log::recipe::split_error_file_logger;
 
 let log_builder = split_error_file_logger("/tmp", "test", log::Level::Debug);
-setup_log(log_builder);
+log_builder.build();
 
 // non-error msg will only appear in /tmp/test.log
 debug!("Set a course to Sol system");

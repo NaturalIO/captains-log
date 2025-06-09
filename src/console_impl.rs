@@ -1,4 +1,8 @@
-use crate::{config::LogConsole, formatter::LogFormat, log_impl::LoggerSinkTrait, time::Timer};
+use crate::{
+    config::{LogConsole, LogFormat},
+    log_impl::LoggerSinkTrait,
+    time::Timer,
+};
 use log::{Level, Record};
 
 pub struct LoggerSinkConsole {

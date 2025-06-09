@@ -1,6 +1,6 @@
 use crate::{
-    config::{Builder, ConsoleTarget, LogConsole, LogFile},
-    formatter::{FormatRecord, LogFormat},
+    config::{Builder, ConsoleTarget, LogConsole, LogFile, LogFormat},
+    formatter::FormatRecord,
 };
 use log::Level;
 
@@ -49,6 +49,26 @@ pub fn stdout_logger(max_level: Level) -> Builder {
 #[inline]
 pub fn stderr_logger(max_level: Level) -> Builder {
     console_logger(ConsoleTarget::Stderr, max_level)
+}
+
+/// In this funtion, setup one log file.
+/// See the source for details.
+pub fn file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
+    let debug_format = LogFormat::new(DEFAULT_TIME, debug_format_f);
+    let debug_file =
+        LogFile::new(dir, &format!("{}.log", name).to_string(), max_level, debug_format);
+    let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).file(debug_file);
+    // panic on debuging
+    #[cfg(debug_assertions)]
+    {
+        config.continue_when_panic = false;
+    }
+    // do not panic on release
+    #[cfg(not(debug_assertions))]
+    {
+        config.continue_when_panic = true;
+    }
+    return config;
 }
 
 /// In this funtion, setup two log files.

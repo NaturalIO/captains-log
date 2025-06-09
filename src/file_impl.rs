@@ -1,4 +1,8 @@
-use crate::{config::LogFile, formatter::LogFormat, log_impl::LoggerSinkTrait, time::Timer};
+use crate::{
+    config::{LogFile, LogFormat},
+    log_impl::LoggerSinkTrait,
+    time::Timer,
+};
 use log::{Level, Record};
 use std::{fs::OpenOptions, os::unix::prelude::*, path::Path, sync::Arc};
 

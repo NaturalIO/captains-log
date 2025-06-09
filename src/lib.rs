@@ -36,17 +36,18 @@
 //!
 //! ## Fast setup eample:
 //!
+//! <font color=Blue>Refer to recipe in `recipe` module, including console & file output. </font>
+//!
 //! ```rust
-//! /// #[macro_use]
-//! /// extern crate captains_log;
-//! /// #[macro_use]
-//! /// extern crate log;
+//! // #[macro_use]
+//! // extern crate captains_log;
+//! // #[macro_use]
+//! // extern crate log;
 //! use log::{debug, info, error};
-//! use captains_log::*;
 //! use captains_log::recipe::split_error_file_logger;
 //!
 //! let log_builder = split_error_file_logger("/tmp", "test", log::Level::Debug);
-//! setup_log(log_builder);
+//! log_builder.build();
 //!
 //! // non-error msg will only appear in /tmp/test.log
 //! debug!("Set a course to Sol system");
@@ -82,7 +83,7 @@
 //!     .signal(signal_hook::consts::SIGINT)
 //!     .file(debug_file);
 //!
-//! setup_log(config);
+//! config.build();
 //! ```
 
 extern crate captains_log_helper;
@@ -107,12 +108,7 @@ mod log_filter;
 pub use captains_log_helper::logfn;
 pub use log::{Level as LogLevel, LevelFilter as LogLevelFilter};
 
-pub use self::{
-    config::{Builder, LogFile},
-    formatter::{FormatRecord, LogFormat},
-    log_filter::*,
-    log_impl::setup_log,
-};
+pub use self::{config::*, formatter::FormatRecord, log_filter::*, log_impl::setup_log};
 
 #[cfg(test)]
 mod tests;

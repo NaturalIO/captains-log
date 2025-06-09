@@ -1,9 +1,12 @@
 use crate::log_impl::setup_log;
 use crate::{
-    console_impl::LoggerSinkConsole, file_impl::LoggerSinkFile, formatter::LogFormat,
+    console_impl::LoggerSinkConsole,
+    file_impl::LoggerSinkFile,
+    formatter::{FormatRecord, TimeFormatter},
     log_impl::LoggerSink,
+    time::Timer,
 };
-use log::{Level, LevelFilter};
+use log::{Level, LevelFilter, Record};
 use std::path::Path;
 
 /// Global config to setup logger
@@ -50,6 +53,7 @@ impl Builder {
         self
     }
 
+    /// Add console sink
     pub fn console(mut self, config: LogConsole) -> Self {
         self.sinks.push(Box::new(config));
         self
@@ -67,6 +71,8 @@ impl Builder {
         return max_level.to_level_filter();
     }
 
+    /// Setup global logger.
+    /// Equals to setup_log(builder)
     pub fn build(self) -> Result<(), ()> {
         setup_log(self)
     }
@@ -74,8 +80,53 @@ impl Builder {
 
 pub trait SinkConfigTrait {
     fn get_level(&self) -> Level;
+    /// Only LogFile has path
     fn get_file_path(&self) -> Option<Box<Path>>;
     fn build(&self) -> LoggerSink;
+}
+
+pub type FormatFunc = fn(FormatRecord) -> String;
+
+#[derive(Clone)]
+/// Custom formatter which adds into a log sink
+pub struct LogFormat {
+    time_fmt: String,
+    format_fn: FormatFunc,
+}
+
+impl LogFormat {
+    /// # Arguments
+    ///
+    /// time_fmt: refer to chrono::format::strftime.
+    ///
+    /// format_fn:
+    /// Since std::fmt only support compile time format,
+    /// you have to write a static function to format the log line
+    ///
+    /// # Example
+    /// ```
+    /// use captains_log::{LogFile, LogFormat, FormatRecord};
+    /// fn format_f(r: FormatRecord) -> String {
+    ///     let time = r.time();
+    ///     let level = r.level();
+    ///     let msg = r.msg();
+    ///     let req_id = r.key("req_id");
+    ///     format!("[{time}][{level}] {msg}{req_id}\n").to_string()
+    /// }
+    /// let log_format = LogFormat::new("%Y-%m-%d %H:%M:%S%.6f", format_f);
+    /// let log_sink = LogFile::new("/tmp", "test.log", log::Level::Info, log_format);
+    /// ```
+
+    pub fn new(time_fmt: &str, format_fn: FormatFunc) -> Self {
+        Self { time_fmt: time_fmt.to_string(), format_fn }
+    }
+
+    #[inline(always)]
+    pub(crate) fn process(&self, now: &Timer, record: &Record) -> String {
+        let time = TimeFormatter { now, fmt_str: &self.time_fmt };
+        let r = FormatRecord { record, time };
+        return (self.format_fn)(r);
+    }
 }
 
 /// Config for file sink
