@@ -1,27 +1,25 @@
 use crate::{
-    config::{Builder, ConsoleTarget, LogConsole, LogFile, LogFormat},
+    config::{Builder, ConsoleTarget, FormatFunc, LogConsole, LogFile, LogFormat},
     formatter::FormatRecord,
 };
 use log::Level;
 
 pub const DEFAULT_TIME: &'static str = "%Y-%m-%d %H:%M:%S%.6f";
 
-fn debug_format_f(r: FormatRecord) -> String {
+pub fn debug_format_f(r: FormatRecord) -> String {
     let time = r.time();
     let level = r.level();
     let file = r.file();
     let line = r.line();
     let msg = r.msg();
-    let req_id = r.key("req_id");
-    format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
+    format!("[{time}][{level}][{file}:{line}] {msg}\n").to_string()
 }
 
-fn error_format_f(r: FormatRecord) -> String {
+pub fn error_format_f(r: FormatRecord) -> String {
     let time = r.time();
     let level = r.level();
     let msg = r.msg();
-    let req_id = r.key("req_id");
-    format!("[{time}][{level}] {msg}{req_id}\n").to_string()
+    format!("[{time}][{level}] {msg}\n").to_string()
 }
 
 fn console_logger(target: ConsoleTarget, max_level: Level) -> Builder {
@@ -51,10 +49,12 @@ pub fn stderr_logger(max_level: Level) -> Builder {
     console_logger(ConsoleTarget::Stderr, max_level)
 }
 
-/// In this funtion, setup one log file.
+/// In this funtion, setup one log file, with custom time_fmt & format_func
 /// See the source for details.
-pub fn file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
-    let debug_format = LogFormat::new(DEFAULT_TIME, debug_format_f);
+pub fn file_logger_custom(
+    dir: &str, name: &str, max_level: Level, time_fmt: &str, format_func: FormatFunc,
+) -> Builder {
+    let debug_format = LogFormat::new(time_fmt, format_func);
     let debug_file =
         LogFile::new(dir, &format!("{}.log", name).to_string(), max_level, debug_format);
     let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).file(debug_file);
@@ -69,6 +69,12 @@ pub fn file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
         config.continue_when_panic = true;
     }
     return config;
+}
+
+/// In this funtion, setup one log file.
+/// See the source for details.
+pub fn file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
+    file_logger_custom(dir, name, max_level, DEFAULT_TIME, debug_format_f)
 }
 
 /// In this funtion, setup two log files.
