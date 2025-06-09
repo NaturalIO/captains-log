@@ -35,7 +35,7 @@
 //! ``` toml
 //! [dependencies]
 //! log = { version = "0.4", features = ["std", "kv_unstable"] }
-//! captains_log = "0.1"
+//! captains_log = "0.2"
 //! ```
 //!
 //! ## Fast setup example:
