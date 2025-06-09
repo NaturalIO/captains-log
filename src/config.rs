@@ -1,17 +1,12 @@
+use crate::{file_impl::LoggerSinkFile, formatter::LogFormat, log_impl::LoggerSink};
 use log::{Level, LevelFilter};
 use std::path::Path;
-use crate::{
-    log_impl::LoggerSink,
-    formatter::LogFormat,
-    file_impl::LoggerSinkFile,
-};
 
 /// Global config to setup logger
 /// See crate::recipe for usage
 
 #[derive(Default)]
 pub struct Builder {
-
     /// When dynamic==true,
     ///   Can safely re-initialize GlobalLogger even it exists,
     ///   useful to setup different types of logger in test suits.
@@ -30,13 +25,11 @@ pub struct Builder {
     pub continue_when_panic: bool,
 
     /// Different types of log sink
-    pub sinks: Vec<Box<dyn SinkConfigTrait>>
+    pub sinks: Vec<Box<dyn SinkConfigTrait>>,
 }
 
-
 impl Builder {
-
-    pub fn new() -> Self{
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -66,7 +59,6 @@ impl Builder {
 }
 
 pub trait SinkConfigTrait {
-
     fn get_level(&self) -> Level;
     fn get_file_path(&self) -> Option<Box<Path>>;
     fn build(&self) -> LoggerSink;
@@ -74,7 +66,6 @@ pub trait SinkConfigTrait {
 
 /// Config for file sink
 pub struct LogFile {
-
     /// Directory path
     pub dir: String,
 
@@ -91,21 +82,13 @@ pub struct LogFile {
 }
 
 impl LogFile {
-
     pub fn new(dir: &str, name: &str, level: Level, format: LogFormat) -> Self {
         let file_path = Path::new(dir).join(Path::new(name)).into_boxed_path();
-        Self{
-            dir: dir.to_string(),
-            name: name.to_string(),
-            level,
-            format,
-            file_path,
-        }
+        Self { dir: dir.to_string(), name: name.to_string(), level, format, file_path }
     }
 }
 
 impl SinkConfigTrait for LogFile {
-
     fn get_level(&self) -> Level {
         self.level
     }

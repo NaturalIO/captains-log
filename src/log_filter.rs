@@ -37,11 +37,8 @@ impl Clone for LogFilter {
 
 impl LogFilter {
     pub fn new(req_id: u64) -> Self {
-        let mut s = Self {
-            req_id,
-            max_level: AtomicUsize::new(Level::Trace as usize),
-            req_str: [0u8; 16],
-        };
+        let mut s =
+            Self { req_id, max_level: AtomicUsize::new(Level::Trace as usize), req_str: [0u8; 16] };
         write!(&mut s.req_str[..], "{:016x}", req_id).expect("to hex");
         s
     }
@@ -60,9 +57,7 @@ impl LogFilter {
     #[doc(hidden)]
     #[inline(always)]
     pub fn _private_api_log(
-        &self,
-        args: fmt::Arguments,
-        level: Level,
+        &self, args: fmt::Arguments, level: Level,
         &(target, module_path, file, line): &(&str, &str, &str, u32),
     ) {
         let record = RecordBuilder::new()

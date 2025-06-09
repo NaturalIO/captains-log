@@ -8,14 +8,12 @@ pub type FormatFunc = fn(FormatRecord) -> String;
 
 #[derive(Clone)]
 /// Custom formatter which adds into a log sink
-pub struct LogFormat
-{
+pub struct LogFormat {
     time_fmt: String,
     format_fn: FormatFunc,
 }
 
 impl LogFormat {
-
     /// # Arguments
     ///
     /// time_fmt: refer to chrono::format::strftime.
@@ -39,20 +37,13 @@ impl LogFormat {
     /// ```
 
     pub fn new(time_fmt: &str, format_fn: FormatFunc) -> Self {
-        Self{
-            time_fmt: time_fmt.to_string(),
-            format_fn,
-        }
+        Self { time_fmt: time_fmt.to_string(), format_fn }
     }
 
     #[inline(always)]
     pub fn process(&self, now: &Timer, record: &Record) -> String {
-        let time = TimeFormatter{
-            now, fmt_str: &self.time_fmt,
-        };
-        let r = FormatRecord{
-            record, time,
-        };
+        let time = TimeFormatter { now, fmt_str: &self.time_fmt };
+        let r = FormatRecord { record, time };
         return (self.format_fn)(r);
     }
 }
@@ -63,7 +54,6 @@ pub struct TimeFormatter<'a> {
 }
 
 impl<'a> TimeFormatter<'a> {
-
     #[inline(always)]
     fn time_str(&self) -> String {
         self.now.format(&self.fmt_str).to_string()
@@ -72,11 +62,10 @@ impl<'a> TimeFormatter<'a> {
 
 pub struct FormatRecord<'a> {
     pub record: &'a Record<'a>,
-    pub time: TimeFormatter<'a>
+    pub time: TimeFormatter<'a>,
 }
 
 impl<'a> FormatRecord<'a> {
-
     #[inline(always)]
     pub fn file(&self) -> &str {
         basename(self.record.file().unwrap_or("<none>"))
@@ -96,9 +85,9 @@ impl<'a> FormatRecord<'a> {
     pub fn key(&self, key: &str) -> String {
         let source = self.record.key_values();
         if let Some(v) = source.get(Key::from_str(key)) {
-            return format!(" ({})", v).to_string()
+            return format!(" ({})", v).to_string();
         } else {
-            return "".to_string()
+            return "".to_string();
         }
     }
 

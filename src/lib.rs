@@ -77,34 +77,32 @@
 //! setup_log(config);
 //! ```
 
-
-
-extern crate log;
 extern crate captains_log_helper;
+extern crate log;
 extern crate signal_hook;
 
 #[macro_use]
 extern crate enum_dispatch;
 
 mod config;
-mod time;
-mod formatter;
 mod file_impl;
+mod formatter;
 mod log_impl;
+mod time;
 
-pub mod recipe;
 pub mod macros;
+pub mod recipe;
 
 mod log_filter;
 
-pub use log::{Level as LogLevel, LevelFilter as LogLevelFilter};
 pub use captains_log_helper::logfn;
+pub use log::{Level as LogLevel, LevelFilter as LogLevelFilter};
 
 pub use self::{
     config::{Builder, LogFile},
-    formatter::{LogFormat, FormatRecord},
+    formatter::{FormatRecord, LogFormat},
     log_filter::*,
-    log_impl::{setup_log},
+    log_impl::setup_log,
 };
 
 #[cfg(test)]

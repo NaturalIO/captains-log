@@ -1,11 +1,10 @@
 use std::fs::*;
 
 use super::utils::*;
-use log::*;
 use crate::macros::*;
+use log::*;
 
 use crate::{recipe::split_error_file_logger, setup_log};
-
 
 #[test]
 fn test_global_log_normal() {
@@ -48,4 +47,3 @@ fn test_global_log_assert() {
     log_assert_eq!("a", "a", "log: assert failed!");
     log_debug_assert_eq!("a", "a", "log: assert failed!");
 }
-

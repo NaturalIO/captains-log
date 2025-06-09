@@ -1,29 +1,23 @@
-use std::thread;
-use std::mem::transmute;
-use std::sync::Arc;
+use crate::{config::Builder, file_impl::LoggerSinkFile, time::Timer};
 use arc_swap::ArcSwap;
 use backtrace::Backtrace;
 use lazy_static::lazy_static;
 use log::*;
 use parking_lot::Mutex;
 use signal_hook::iterator::Signals;
-use crate::{
-    config::Builder,
-    file_impl::LoggerSinkFile,
-    time::Timer,
-};
-
+use std::mem::transmute;
+use std::sync::Arc;
+use std::thread;
 
 #[enum_dispatch]
 pub(crate) trait LoggerSinkTrait {
-
     fn reopen(&self) -> std::io::Result<()>;
 
     fn log(&self, now: &Timer, r: &Record);
 }
 
 #[enum_dispatch(LoggerSinkTrait)]
-pub enum LoggerSink{
+pub enum LoggerSink {
     File(LoggerSinkFile),
 }
 
@@ -51,16 +45,14 @@ fn panic_or_error() {
     }
 }
 
-
 impl LoggerInner {
-
     #[allow(dead_code)]
     fn set(&self, sinks: Vec<LoggerSink>) {
         match &self {
-            Self::Once(_)=>{
+            Self::Once(_) => {
                 panic_or_error();
             }
-            Self::Dyn(d)=>{
+            Self::Dyn(d) => {
                 d.store(Arc::new(sinks));
             }
         }
@@ -71,12 +63,12 @@ impl GlobalLogger {
     pub fn reopen(&mut self) -> std::io::Result<()> {
         if let Some(inner) = self.inner.as_ref() {
             match &inner {
-                LoggerInner::Once(inner)=>{
+                LoggerInner::Once(inner) => {
                     for sink in inner.iter() {
                         sink.reopen()?;
                     }
                 }
-                LoggerInner::Dyn(inner)=>{
+                LoggerInner::Dyn(inner) => {
                     let sinks = inner.load();
                     for sink in sinks.iter() {
                         sink.reopen()?;
@@ -124,12 +116,12 @@ impl Log for GlobalLogger {
         let now = Timer::new();
         if let Some(inner) = self.inner.as_ref() {
             match &inner {
-                LoggerInner::Once(inner)=>{
+                LoggerInner::Once(inner) => {
                     for sink in inner.iter() {
                         sink.log(&now, r);
                     }
                 }
-                LoggerInner::Dyn(inner)=>{
+                LoggerInner::Dyn(inner) => {
                     let sinks = inner.load();
                     for sink in sinks.iter() {
                         sink.log(&now, r);
@@ -157,17 +149,8 @@ pub fn log_panic(info: &std::panic::PanicHookInfo) {
     if let Some(loc) = info.location() {
         record.file(Some(loc.file())).line(Some(loc.line()));
     }
-    log::logger().log(
-        &record
-            .args(format_args!("panic occur: {}\ntrace: {:?}", info, bt))
-            .build(),
-    );
-    eprint!(
-        "panic occur: {} at {:?}\ntrace: {:?}",
-        info,
-        info.location(),
-        bt
-    );
+    log::logger().log(&record.args(format_args!("panic occur: {}\ntrace: {:?}", info, bt)).build());
+    eprint!("panic occur: {} at {:?}\ntrace: {:?}", info, info.location(), bt);
 }
 
 fn panic_and_exit_hook(info: &std::panic::PanicHookInfo) {

@@ -1,11 +1,6 @@
-use std::{fs::OpenOptions, os::unix::prelude::*, path::Path, sync::Arc};
+use crate::{config::LogFile, formatter::LogFormat, log_impl::LoggerSinkTrait, time::Timer};
 use log::{Level, Record};
-use crate::{
-    config::LogFile,
-    formatter::LogFormat,
-    time::Timer,
-    log_impl::LoggerSinkTrait,
-};
+use std::{fs::OpenOptions, os::unix::prelude::*, path::Path, sync::Arc};
 
 use arc_swap::ArcSwapOption;
 
@@ -22,10 +17,8 @@ fn open_file(path: &Path) -> std::io::Result<std::fs::File> {
 }
 
 impl LoggerSinkFile {
-
-
     pub fn new(config: &LogFile) -> Self {
-        Self{
+        Self {
             path: config.file_path.clone(),
             max_level: config.level,
             formatter: config.format.clone(),
@@ -35,15 +28,14 @@ impl LoggerSinkFile {
 }
 
 impl LoggerSinkTrait for LoggerSinkFile {
-
     fn reopen(&self) -> std::io::Result<()> {
         match open_file(&self.path) {
-            Ok(f)=>{
+            Ok(f) => {
                 println!("reopen {:#?}", &self.path);
                 self.f.store(Some(Arc::new(f)));
                 Ok(())
             }
-            Err(e)=>{
+            Err(e) => {
                 println!("reopen logfile {:#?} failed: {:?}", &self.path, e);
                 Err(e)
             }

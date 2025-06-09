@@ -1,8 +1,8 @@
-use log::Level;
 use crate::{
     config::{Builder, LogFile},
-    formatter::{LogFormat, FormatRecord},
+    formatter::{FormatRecord, LogFormat},
 };
+use log::Level;
 
 pub const DEFAULT_TIME: &'static str = "%Y-%m-%d %H:%M:%S%.6f";
 
@@ -27,25 +27,16 @@ pub fn split_error_file_logger(dir: &str, name: &str, max_level: Level) -> Build
         let req_id = r.key("req_id");
         format!("[{time}][{level}] {msg}{req_id}\n").to_string()
     }
-    let debug_format = LogFormat::new(DEFAULT_TIME,
-        debug_format_f,
-    );
+    let debug_format = LogFormat::new(DEFAULT_TIME, debug_format_f);
 
-    let err_format = LogFormat::new(
-        DEFAULT_TIME,
-        error_format_f,
-    );
-    let debug_file = LogFile::new(
-        dir, &format!("{}.log", name).to_string(), max_level,
-        debug_format);
-    let error_file = LogFile::new(dir, &format!("{}.log.wf", name).to_string(),
-        Level::Error,
-        err_format);
+    let err_format = LogFormat::new(DEFAULT_TIME, error_format_f);
+    let debug_file =
+        LogFile::new(dir, &format!("{}.log", name).to_string(), max_level, debug_format);
+    let error_file =
+        LogFile::new(dir, &format!("{}.log.wf", name).to_string(), Level::Error, err_format);
 
-    let mut config = Builder::default()
-        .signal(signal_hook::consts::SIGUSR1)
-        .file(debug_file)
-        .file(error_file);
+    let mut config =
+        Builder::default().signal(signal_hook::consts::SIGUSR1).file(debug_file).file(error_file);
 
     // panic on debuging
     #[cfg(debug_assertions)]
@@ -57,5 +48,5 @@ pub fn split_error_file_logger(dir: &str, name: &str, max_level: Level) -> Build
     {
         config.continue_when_panic = true;
     }
-    return config
+    return config;
 }

@@ -6,11 +6,7 @@ pub const TEST_LOCK_FILE: &str = "/tmp/natualio_test_lock";
 macro_rules! lock_file {
     () => {
         // NOTE: use one {} to expose the guard into context
-        let lock_fd = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open(&TEST_LOCK_FILE)
-            .unwrap();
+        let lock_fd = OpenOptions::new().create(true).write(true).open(&TEST_LOCK_FILE).unwrap();
         let _guard = fmutex::lock_exclusive(&lock_fd).unwrap();
     };
 }
@@ -22,6 +18,4 @@ pub fn clear_test_files(builder: &Builder) {
             let _ = remove_file(file_path);
         }
     }
-
 }
-
