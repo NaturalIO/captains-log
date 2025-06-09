@@ -25,7 +25,6 @@
 //!
 //!   Provides an attribute macro #\[logfn\] to wrap test function. Logging test-start and test-end.
 
-
 //!
 //! ## Dependency
 //!
@@ -94,6 +93,7 @@ extern crate signal_hook;
 extern crate enum_dispatch;
 
 mod config;
+mod console_impl;
 mod file_impl;
 mod formatter;
 mod log_impl;

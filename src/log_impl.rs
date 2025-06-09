@@ -1,4 +1,6 @@
-use crate::{config::Builder, file_impl::LoggerSinkFile, time::Timer};
+use crate::{
+    config::Builder, console_impl::LoggerSinkConsole, file_impl::LoggerSinkFile, time::Timer,
+};
 use arc_swap::ArcSwap;
 use backtrace::Backtrace;
 use lazy_static::lazy_static;
@@ -22,6 +24,7 @@ pub(crate) trait LoggerSinkTrait {
 #[enum_dispatch(LoggerSinkTrait)]
 pub enum LoggerSink {
     File(LoggerSinkFile),
+    Console(LoggerSinkConsole),
 }
 
 /// Global static structure to hold the logger

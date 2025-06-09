@@ -4,16 +4,27 @@ use super::utils::*;
 use crate::macros::*;
 use log::*;
 
-use crate::{recipe::split_error_file_logger, setup_log};
+use crate::{recipe, recipe::split_error_file_logger};
 
 #[test]
-fn test_global_log_normal() {
+fn test_global_log_console() {
+    lock_file!();
+    let mut builder = recipe::stderr_logger(Level::Debug);
+    builder.dynamic = true;
+    builder.build().expect("setup_log");
+    debug!("test1 {}", "debug");
+    info!("test2");
+    error!("test3_error {}", "hahah");
+}
+
+#[test]
+fn test_global_log_file() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_test", Level::Debug);
     builder.dynamic = true;
     clear_test_files(&builder);
-    setup_log(builder).expect("setup_log");
+    builder.build().expect("setup_log");
     debug!("test1 {}", "debug");
     info!("test2");
     error!("test3_error {}", "hahah");
@@ -38,7 +49,7 @@ fn test_global_log_assert() {
     let mut builder = split_error_file_logger("/tmp", "log_test", Level::Debug);
     builder.dynamic = true;
     clear_test_files(&builder);
-    setup_log(builder).expect("setup_log");
+    builder.build().expect("setup_log");
 
     // Change the following condition to see the result
     log_assert!(true);

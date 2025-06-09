@@ -1,4 +1,8 @@
-use crate::{file_impl::LoggerSinkFile, formatter::LogFormat, log_impl::LoggerSink};
+use crate::log_impl::setup_log;
+use crate::{
+    console_impl::LoggerSinkConsole, file_impl::LoggerSinkFile, formatter::LogFormat,
+    log_impl::LoggerSink,
+};
 use log::{Level, LevelFilter};
 use std::path::Path;
 
@@ -46,6 +50,11 @@ impl Builder {
         self
     }
 
+    pub fn console(mut self, config: LogConsole) -> Self {
+        self.sinks.push(Box::new(config));
+        self
+    }
+
     /// Return the max log level in the log sinks
     pub fn get_max_level(&self) -> LevelFilter {
         let mut max_level = Level::Error;
@@ -56,6 +65,10 @@ impl Builder {
             }
         }
         return max_level.to_level_filter();
+    }
+
+    pub fn build(self) -> Result<(), ()> {
+        setup_log(self)
     }
 }
 
@@ -76,7 +89,7 @@ pub struct LogFile {
     /// filename
     pub name: String,
 
-    pub(crate) format: LogFormat,
+    pub format: LogFormat,
 
     /// path: dir/name
     pub file_path: Box<Path>,
@@ -100,5 +113,41 @@ impl SinkConfigTrait for LogFile {
 
     fn build(&self) -> LoggerSink {
         LoggerSink::File(LoggerSinkFile::new(self))
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+#[repr(u8)]
+pub enum ConsoleTarget {
+    Stdout = 1,
+    Stderr = 2,
+}
+
+pub struct LogConsole {
+    pub target: ConsoleTarget,
+
+    /// max log level in this file
+    pub level: Level,
+
+    pub format: LogFormat,
+}
+
+impl LogConsole {
+    pub fn new(target: ConsoleTarget, level: Level, format: LogFormat) -> Self {
+        Self { target, level, format }
+    }
+}
+
+impl SinkConfigTrait for LogConsole {
+    fn get_level(&self) -> Level {
+        self.level
+    }
+
+    fn get_file_path(&self) -> Option<Box<Path>> {
+        None
+    }
+
+    fn build(&self) -> LoggerSink {
+        LoggerSink::Console(LoggerSinkConsole::new(self))
     }
 }
