@@ -16,6 +16,7 @@ pub struct Builder {
     pub dynamic: bool,
 
     /// Listen for signal of log-rotate
+    /// NOTE: Once logger started to listen signal, does not support dynamic reconfigure.
     pub rotation_signals: Vec<i32>,
 
     /// Hookup to log error when panic

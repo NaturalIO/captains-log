@@ -6,7 +6,10 @@ use log::*;
 use parking_lot::Mutex;
 use signal_hook::iterator::Signals;
 use std::mem::transmute;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::thread;
 
 #[enum_dispatch]
@@ -26,6 +29,7 @@ struct GlobalLogger {
     // Global static needs initialization when declaring,
     // default to be empty
     inner: Option<LoggerInner>,
+    signal_listener: AtomicBool,
 }
 
 enum LoggerInner {
@@ -103,6 +107,13 @@ impl GlobalLogger {
         }
 
         let _ = unsafe { set_logger(transmute::<&Self, &'static Self>(self)) };
+
+        // panic hook can be set multiple times
+        if builder.continue_when_panic {
+            std::panic::set_hook(Box::new(panic_no_exit_hook));
+        } else {
+            std::panic::set_hook(Box::new(panic_and_exit_hook));
+        }
         Ok(true)
     }
 }
@@ -137,7 +148,10 @@ impl Log for GlobalLogger {
 lazy_static! {
     // Mutex only access on init and reopen, bypassed while logging,
     // because crate log only use const raw pointer to access GlobalLogger.
-    static ref GLOBAL_LOGGER: Mutex<GlobalLogger> = Mutex::new(GlobalLogger { inner: None });
+    static ref GLOBAL_LOGGER: Mutex<GlobalLogger> = Mutex::new(GlobalLogger {
+        inner: None ,
+        signal_listener: AtomicBool::new(false),
+    });
 }
 
 /// log handle for panic hook
@@ -163,6 +177,28 @@ fn panic_no_exit_hook(info: &std::panic::PanicHookInfo) {
     eprint!("not debug version, so don't exit process");
 }
 
+fn signal_listener(signals: Vec<i32>) {
+    let started;
+    {
+        let global_logger = GLOBAL_LOGGER.lock();
+        started = global_logger.signal_listener.swap(true, Ordering::SeqCst);
+    }
+    if started {
+        // NOTE: Once logger started to listen signal, does not support dynamic reconfigure.
+        eprintln!("signal listener already started");
+        return;
+    }
+    thread::spawn(move || {
+        let mut signals = Signals::new(&signals).unwrap();
+        for __sig in signals.forever() {
+            {
+                let mut global_logger = GLOBAL_LOGGER.lock();
+                let _ = global_logger.reopen();
+            }
+        }
+    });
+}
+
 /// Initialize global logger from Builder
 pub fn setup_log(builder: Builder) -> Result<(), ()> {
     {
@@ -177,21 +213,10 @@ pub fn setup_log(builder: Builder) -> Result<(), ()> {
             Ok(true) => {}
         }
         set_max_level(builder.get_max_level());
-        if builder.continue_when_panic {
-            std::panic::set_hook(Box::new(panic_no_exit_hook));
-        } else {
-            std::panic::set_hook(Box::new(panic_and_exit_hook));
-        }
     }
-    if builder.rotation_signals.len() > 0 {
-        let signals = builder.rotation_signals.clone();
-        thread::spawn(move || {
-            let mut signals = Signals::new(&signals).unwrap();
-            for __sig in signals.forever() {
-                let mut global_logger = GLOBAL_LOGGER.lock();
-                let _ = global_logger.reopen();
-            }
-        });
+    let signals = builder.rotation_signals.clone();
+    if signals.len() > 0 {
+        signal_listener(signals);
     }
     Ok(())
 }
