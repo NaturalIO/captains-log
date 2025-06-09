@@ -38,6 +38,7 @@ enum LoggerInner {
     Dyn(ArcSwap<Vec<LoggerSink>>),
 }
 
+#[inline(always)]
 fn panic_or_error() {
     #[cfg(debug_assertions)]
     {
@@ -119,10 +120,12 @@ impl GlobalLogger {
 }
 
 impl Log for GlobalLogger {
+    #[inline(always)]
     fn enabled(&self, _m: &Metadata) -> bool {
         true
     }
 
+    #[inline(always)]
     fn log(&self, r: &Record) {
         let now = Timer::new();
         if let Some(inner) = self.inner.as_ref() {
@@ -167,11 +170,13 @@ pub fn log_panic(info: &std::panic::PanicHookInfo) {
     eprint!("panic occur: {} at {:?}\ntrace: {:?}", info, info.location(), bt);
 }
 
+#[inline(always)]
 fn panic_and_exit_hook(info: &std::panic::PanicHookInfo) {
     log_panic(info);
     std::process::exit(exitcode::IOERR);
 }
 
+#[inline(always)]
 fn panic_no_exit_hook(info: &std::panic::PanicHookInfo) {
     log_panic(info);
     eprint!("not debug version, so don't exit process");

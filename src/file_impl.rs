@@ -42,6 +42,7 @@ impl LoggerSinkTrait for LoggerSinkFile {
         }
     }
 
+    #[inline(always)]
     fn log(&self, now: &Timer, r: &Record) {
         if r.level() <= self.max_level {
             // ArcSwap ensure file fd is not close during reopen for log rotation,
