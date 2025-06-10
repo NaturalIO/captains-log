@@ -24,7 +24,8 @@
 //! * For test suits usage:
 //!
 //!   Allow dynamic reconfigure logger setting in different test function.
-//!(NOTE: currently signal_listener does not support reconfigure).
+//!
+//!   (NOTE: currently signal_listener does not support reconfigure).
 //!
 //!   Provides an attribute macro #\[logfn\] to wrap test function.
 //!  Logging test-start and test-end.
@@ -124,7 +125,7 @@
 //!     let req_id = r.key("req_id");
 //!     format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
 //! }
-//! let builder = recipe::file_logger_custom("/tmp", "log_filter", log::Level::Debug,
+//! let builder = recipe::file_logger_custom("/tmp", "log_filter.log", log::Level::Debug,
 //!     recipe::DEFAULT_TIME, debug_format_req_id_f);
 //! builder.build().expect("setup_log");
 //! let logger = LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
