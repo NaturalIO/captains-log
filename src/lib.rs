@@ -12,19 +12,26 @@
 //!
 //! * Supports hook on panic.
 //!
-//! * On default supports multi-process/thread/coroutine log into the same file.
-//! Atomic line appending can be done on Linux
+//! * Supports multi-process/thread/coroutine log
 //!
-//! * Provides `LogFilter` for fine-grain control to log level.
+//!   Atomic line appending into the same file can be done on Linux
 //!
-//! * Provides `LogFilterKV` for API logging with additional key.
-//! For example, you can set req_id in LogFilterKV, and track the
+//! * Fine-grain module-level control.
+//!
+//!   Provides `LogFilter` to filter specified logs on-the-fly
+//!
+//! * API-level log handling.
+//!
+//!   Provides `LogFilterKV` for API logging with additional key.
+//!
+//!   For example, you can set `req_id` in `LogFilterKV`, and track the
 //! complete request handling procedure from log.
 //!
 //! * For test suits usage:
 //!
 //!   Allow dynamic reconfigure logger setting in different test function.
-//!(NOTE: currently signal_listener does not support reconfigure).
+//!
+//!   (NOTE: currently signal_listener does not support reconfigure).
 //!
 //!   Provides an attribute macro #\[logfn\] to wrap test function.
 //!  Logging test-start and test-end.
@@ -90,9 +97,9 @@
 //! config.build();
 //! ```
 //!
-//! ## Fine-grain module-level log control
+//! ## Fine-grain module-level control
 //!
-//! Place LogFilter in Arc and share among coroutines.
+//! Place `LogFilter` in Arc and share among coroutines.
 //! Log level can be changed on-the-fly.
 //!
 //! ``` rust
@@ -111,10 +118,11 @@
 //!
 //! ## API-level log handling
 //!
-//! Request log can be track by custom key `req_id`, which kept in LogFilterKV.
+//! Request log can be track by custom key `req_id`, which kept in `LogFilterKV`.
 //!
 //! ``` rust
 //! use captains_log::*;
+//! use log::*;
 //! fn debug_format_req_id_f(r: FormatRecord) -> String {
 //!     let time = r.time();
 //!     let level = r.level();
@@ -124,14 +132,23 @@
 //!     let req_id = r.key("req_id");
 //!     format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
 //! }
-//! let builder = recipe::file_logger_custom("/tmp", "log_filter", log::Level::Debug,
+//! let builder = recipe::file_logger_custom("/tmp", "log_filter.log", log::Level::Debug,
 //!     recipe::DEFAULT_TIME, debug_format_req_id_f);
 //! builder.build().expect("setup_log");
 //! let logger = LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
+//! info!("API service started");
 //! logger_debug!(logger, "Req / received");
 //! logger_debug!(logger, "header xxx");
 //! logger_info!(logger, "Req / 200 complete");
+//! ```
 //!
+//! The log will be:
+//!
+//! ``` text
+//! [2025-06-11 14:33:08.089090][DEBUG][request.rs:67] API service started
+//! [2025-06-11 14:33:10.099092][DEBUG][request.rs:67] Req / received (000000000000007b)
+//! [2025-06-11 14:33:10.099232][WARN][request.rs:68] header xxx (000000000000007b)
+//! [2025-06-11 14:33:11.009092][DEBUG][request.rs:67] Req / 200 complete (000000000000007b)
 //! ```
 
 extern crate captains_log_helper;
