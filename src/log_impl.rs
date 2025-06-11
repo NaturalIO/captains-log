@@ -177,7 +177,8 @@ pub fn log_panic(info: &std::panic::PanicHookInfo) {
 #[inline(always)]
 fn panic_and_exit_hook(info: &std::panic::PanicHookInfo) {
     log_panic(info);
-    std::process::exit(exitcode::IOERR);
+    let msg = format!("{}", info).to_string();
+    std::panic::resume_unwind(Box::new(msg));
 }
 
 #[inline(always)]
