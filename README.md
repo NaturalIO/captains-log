@@ -50,7 +50,7 @@ complete request handling procedure from log.
 ``` toml
 [dependencies]
 log = { version = "0.4", features = ["std", "kv_unstable"] }
-captains_log = "0.2"
+captains_log = "0.3"
 ```
 
 ## Fast setup example:
