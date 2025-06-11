@@ -26,6 +26,7 @@ exitcode = "1"
 lazy_static = "1.4"
 arc-swap = "1"
 enum_dispatch = "0.3"
+regex = "1"
 
 [dev-dependencies]
 fmutex = "0"

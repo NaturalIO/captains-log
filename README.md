@@ -43,6 +43,8 @@ complete request handling procedure from log.
 
   Provides an attribute macro #[logfn] to wrap test function. Logging test-start and test-end.
 
+* Provides a `LogParser` to work on your log files.
+
 ## Dependency
 
 ``` toml

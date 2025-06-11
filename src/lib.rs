@@ -35,7 +35,8 @@
 //!
 //!   Provides an attribute macro #\[logfn\] to wrap test function.
 //!  Logging test-start and test-end.
-
+//!
+//! * Provides a `LogParser` to work on your log files.
 //!
 //! ## Dependency
 //!
@@ -166,6 +167,7 @@ mod log_impl;
 mod time;
 
 pub mod macros;
+pub mod parser;
 pub mod recipe;
 
 mod log_filter;
