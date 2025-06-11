@@ -1,4 +1,4 @@
-use crate::Builder;
+use crate::{parser::LogParser, Builder};
 use std::fs::remove_file;
 
 pub const TEST_LOCK_FILE: &str = "/tmp/natualio_test_lock";
@@ -18,4 +18,14 @@ pub fn clear_test_files(builder: &Builder) {
             let _ = remove_file(file_path);
         }
     }
+}
+
+pub fn parse_log(file_path: &str, re: &str) -> std::io::Result<Vec<Vec<String>>> {
+    let parser = LogParser::new(file_path, re, 1024)?;
+    let mut lines = Vec::with_capacity(1024);
+    for line in parser.lines() {
+        let _line = line?;
+        lines.push(_line);
+    }
+    Ok(lines)
 }
