@@ -1,6 +1,6 @@
 [package]
 name = "captains-log"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["plan <frostyplanet@gmail.com>"]
 categories = ["development-tools::debugging"]
@@ -17,7 +17,7 @@ and can change log setting on the fly.
 [dependencies]
 log = { version = "0.4", features = ["std", "kv_unstable"] }
 signal-hook = { version = "0" }
-libc = { version= "0.2.6" }
+libc = { version= "0" }
 chrono = "0.4"
 parking_lot = "0"
 backtrace = "0.3"
