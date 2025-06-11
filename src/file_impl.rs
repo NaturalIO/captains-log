@@ -35,12 +35,11 @@ impl LoggerSinkTrait for LoggerSinkFile {
     fn reopen(&self) -> std::io::Result<()> {
         match open_file(&self.path) {
             Ok(f) => {
-                println!("reopen {:#?}", &self.path);
                 self.f.store(Some(Arc::new(f)));
                 Ok(())
             }
             Err(e) => {
-                println!("reopen logfile {:#?} failed: {:?}", &self.path, e);
+                eprintln!("open logfile {:#?} failed: {:?}", &self.path, e);
                 Err(e)
             }
         }

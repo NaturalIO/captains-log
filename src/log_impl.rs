@@ -84,6 +84,7 @@ impl GlobalLogger {
                 }
             }
         }
+        println!("log sinks re-opened");
         Ok(())
     }
 
