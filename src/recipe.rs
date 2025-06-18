@@ -44,12 +44,27 @@ pub fn stdout_logger(max_level: Level) -> Builder {
     console_logger(ConsoleTarget::Stdout, max_level)
 }
 
+/// Output to stdout, with dynamic=true for test cases.
+pub fn stdout_test_logger(max_level: Level) -> Builder {
+    let mut builder = stdout_logger(max_level);
+    builder.dynamic = true;
+    builder
+}
+
 #[inline]
 pub fn stderr_logger(max_level: Level) -> Builder {
     console_logger(ConsoleTarget::Stderr, max_level)
 }
 
-/// In this funtion, setup one log file, with custom time_fmt & format_func
+/// Output to stderr, with dynamic=true for test cases.
+#[inline]
+pub fn stderr_test_logger(max_level: Level) -> Builder {
+    let mut builder = stderr_logger(max_level);
+    builder.dynamic = true;
+    builder
+}
+
+/// In this funtion, setup one log file, with custom time_fmt & format_func.
 /// See the source for details.
 pub fn file_logger_custom(
     dir: &str, name: &str, max_level: Level, time_fmt: &str, format_func: FormatFunc,
@@ -78,7 +93,7 @@ pub fn file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
 }
 
 /// In this funtion, setup two log files.
-/// One for debug purpose, with code file line to track problem
+/// One for debug purpose, with code file line to track problem.
 /// One for error log.
 /// See the source for details.
 pub fn split_error_file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
