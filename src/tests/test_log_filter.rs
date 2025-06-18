@@ -1,7 +1,7 @@
 use super::utils::lock_file;
 use super::utils::*;
 use crate::recipe;
-use crate::{recipe::split_error_file_logger, setup_log, FormatRecord, LogFilter, LogFilterKV};
+use crate::{FormatRecord, LogFilter, LogFilterKV, recipe::split_error_file_logger, setup_log};
 use regex::Regex;
 use std::fs::*;
 use std::panic;

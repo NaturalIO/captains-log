@@ -9,8 +9,8 @@ use parking_lot::Mutex;
 use signal_hook::iterator::Signals;
 use std::mem::transmute;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 use std::thread;
 
