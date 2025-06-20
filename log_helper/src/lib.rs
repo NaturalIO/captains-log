@@ -158,7 +158,7 @@ fn generate_function(closure: &ExprClosure, args: Args, fn_name: String, sig: &S
 ///
 /// * Sometimes your test crashes, you want to find the resposible test case.
 ///
-/// ```
+/// ``` rust
 /// use rstest::*;
 /// use log::*;
 /// use captains_log::*;

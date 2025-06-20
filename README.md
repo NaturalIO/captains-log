@@ -204,7 +204,7 @@ We provides proc macro #[logfn], nice to combine with rstest.
 
 * Sometimes your test crashes, you want to find the resposible test case.
 
-```
+``` rust
 use rstest::*;
 use log::*;
 use captains_log::*;
