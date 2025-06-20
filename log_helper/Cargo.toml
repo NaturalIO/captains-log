@@ -1,6 +1,6 @@
 [package]
 name = "captains-log-helper"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["plan <frostyplanet@gmail.com>"]
 edition = "2021"
 description = "Procedural Macros for logging for tests"
