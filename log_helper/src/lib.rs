@@ -1,29 +1,48 @@
 #![recursion_limit = "128"]
-
-
-extern crate proc_macro;
-extern crate syn;
+use proc_macro2::Span;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{
-    parse_macro_input, spanned::Spanned, token, AttributeArgs, Expr, ExprBlock, ExprClosure,
-    ItemFn, Result, ReturnType,
+    parse_macro_input, spanned::Spanned, token, Expr, ExprBlock, ExprClosure,
+    ItemFn, Result, ReturnType, LitStr, Ident, Token,
 };
+use syn::parse::{Parse, ParseStream};
 
-struct FormattedAttributes {
-    begin_expr: TokenStream,
-    end_expr: TokenStream,
+#[derive(Default, Debug)]
+struct Args {
+    level: Option<String>,
 }
 
-impl FormattedAttributes {
-    fn get_streams(name: String) -> Self {
-        let fmt_begin = format!("+++ {} begin +++", name);
-        let fmt_end = format!("--- {} end ---", name);
-        let begin_expr = quote! {log::info!(#fmt_begin); };
-        let end_expr = quote! {log::info!(#fmt_end); };
-        FormattedAttributes { begin_expr, end_expr }
+impl Parse for Args {
+    fn parse(input: ParseStream) -> syn::Result::<Self> {
+        let mut args = Self::default();
+        while !input.is_empty() {
+            if input.peek(LitStr) {
+                // [logfn("warn")]
+                let level = input.parse::<LitStr>()?;
+                args.level = Some(level.value());
+            } else if input.peek(Ident) {
+                // [logfn(warn)]
+                let ident = input.parse::<Ident>()?;
+                if args.level.is_none() {
+                    args.level = Some(ident.to_string());
+                }
+            } else {
+                return Err(input.error("unexpected token"));
+            }
+        }
+        if let Some(v) = args.level.as_ref() {
+            match v.as_str() {
+                "trace" | "debug" | "info" | "warn" | "error"=>{},
+                _=> {
+                    return Err(input.error(format!("unexpected level value: {:?}", v)));
+                }
+            }
+        }
+        Ok(args)
     }
 }
+
 
 fn make_closure(original: &ItemFn) -> ExprClosure {
     let body = Box::new(Expr::Block(ExprBlock {
@@ -34,8 +53,10 @@ fn make_closure(original: &ItemFn) -> ExprClosure {
 
     ExprClosure {
         attrs: Default::default(),
-        asyncness: Default::default(),
+        lifetimes: Default::default(),
+        constness: Default::default(),
         movability: Default::default(),
+        asyncness: Default::default(),
         capture: Some(token::Move { span: original.span() }),
         or1_token: Default::default(),
         inputs: Default::default(),
@@ -51,8 +72,13 @@ fn replace_function_headers(original: ItemFn, new: &mut ItemFn) {
     new.block = block;
 }
 
-fn generate_function(closure: &ExprClosure, expressions: FormattedAttributes) -> Result<ItemFn> {
-    let FormattedAttributes { begin_expr, end_expr } = expressions;
+fn generate_function(closure: &ExprClosure, args: Args, fn_name: String) -> Result<ItemFn> {
+    let level = args.level.unwrap_or("info".to_string());
+    let level = Ident::new(&level, Span::call_site());
+    let fmt_begin = format!("+++ {} begin +++", fn_name);
+    let fmt_end = format!("--- {} end ---", fn_name);
+    let begin_expr = quote! {log::#level!(#fmt_begin); };
+    let end_expr = quote! {log::#level!(#fmt_end); };
     let code = quote! {
         fn temp() {
             #begin_expr;
@@ -93,12 +119,12 @@ fn generate_function(closure: &ExprClosure, expressions: FormattedAttributes) ->
 pub fn logfn(
     attr: proc_macro::TokenStream, item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let _attr = parse_macro_input!(attr as AttributeArgs);
     let original_fn: ItemFn = parse_macro_input!(item as ItemFn);
-    let parsed_attributes = FormattedAttributes::get_streams(original_fn.sig.ident.to_string());
+    let args = parse_macro_input!(attr as Args);
+    let fn_name = original_fn.sig.ident.to_string();
     let closure = make_closure(&original_fn);
     let mut new_fn =
-        generate_function(&closure, parsed_attributes).expect("Failed Generating Function");
+        generate_function(&closure, args, fn_name).expect("Failed Generating Function");
     replace_function_headers(original_fn, &mut new_fn);
     new_fn.into_token_stream().into()
 }
