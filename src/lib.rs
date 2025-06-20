@@ -28,8 +28,7 @@
 //!
 //!     + Provides an attribute macro #\[logfn\] to wrap test function.
 //!
-//!       Refer to [Best practice][crate::logfn].
-//!
+//!       Refer to [Best practice][#best-practice-with-tests].
 //!
 //! * Provides a [LogParser](crate::parser::LogParser) to work on your log files.
 //!
@@ -44,7 +43,7 @@
 //! ```
 //!
 //! lib.rs or main.rs:
-//! ```
+//! ``` rust
 //! #[macro_use]
 //! extern crate captains_log;
 //! #[macro_use]
@@ -55,7 +54,7 @@
 //!
 //! Refer to [recipe] module for more example.
 //!
-//! ```rust
+//! ``` rust
 //! use log::{debug, info, error};
 //! use captains_log::recipe::split_error_file_logger;
 //!
@@ -71,6 +70,7 @@
 //! // will appear in both /tmp/test.log and /tmp/test.log.wf
 //! error!("Engine over heat!");
 //! ```
+//!
 //!
 //! ## Customize format example
 //!
@@ -99,6 +99,7 @@
 //! config.build();
 //! ```
 //!
+//!
 //! ## Fine-grain module-level control
 //!
 //! Place [LogFilter] in Arc and share among coroutines.
@@ -117,9 +118,10 @@
 //! logger_error!(logger_req, "Req invalid ...");
 //! ```
 //!
+//!
 //! ## API-level log handling
 //!
-//! Request log can be track by custom key `req_id`, which kept in [LogFilterKV].
+//! Request log can be track by custom key req_id, which kept in [LogFilterKV].
 //!
 //! ``` rust
 //! use captains_log::*;
@@ -152,6 +154,7 @@
 //! [2025-06-11 14:33:11.009092][DEBUG][request.rs:67] Req / 200 complete (000000000000007b)
 //! ```
 //!
+//!
 //! ## Unit test example
 //!
 //! To setup different log config on different tests.
@@ -160,6 +163,7 @@
 //! which enable dynamic log config and disable signal_hook.
 //!
 //! ```rust
+//!
 //! use log::{debug, info, error, Level};
 //! use captains_log::recipe;
 //!
@@ -187,6 +191,7 @@
 //! * Sometimes your test crashes, you want to find the resposible test case.
 //!
 //! ``` rust
+//!
 //! use rstest::*;
 //! use log::*;
 //! use captains_log::*;
@@ -215,7 +220,8 @@
 //! ```
 //!
 //! After running the test with:
-//! `cargo test -- --test-threads=1`
+//!
+//! cargo test -- --test-threads=1
 //!
 //! /tmp/log_rstest.log will have this content:
 //!

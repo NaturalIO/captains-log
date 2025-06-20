@@ -67,7 +67,7 @@ extern crate log;
 
 You can refer to various preset recipe in `recipe` module, including console & file output.
 
-```rust
+``` rust
 // #[macro_use]
 // extern crate captains_log;
 // #[macro_use]
@@ -88,7 +88,7 @@ info!("Engage");
 
 // will appear in both /tmp/test.log and /tmp/test.log.wf
 error!("Engine over heat!");
-
+```
 
 ## Customize format example
 
@@ -168,6 +168,7 @@ The log will be:
 [2025-06-11 14:33:10.099092][DEBUG][request.rs:67] Req / received (000000000000007b)
 [2025-06-11 14:33:10.099232][WARN][request.rs:68] header xxx (000000000000007b)
 [2025-06-11 14:33:11.009092][DEBUG][request.rs:67] Req / 200 complete (000000000000007b)
+```
 
 ## Unit test example
 
