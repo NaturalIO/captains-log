@@ -8,35 +8,30 @@
 //!
 //! * Supports multiple types of sink stacking, each with its own log level.
 //!
-//!     + [Builder]::console([LogConsole]):   Console output to stdout/stderr.
+//!     + [Builder::console()] :   Console output to stdout/stderr.
 //!
-//!     + [Builder]::raw_file([LogRawFile]):  Support atomic appending from multi-process on linux
+//!     + [Builder::raw_file()] :  Support atomic appending from multi-process on linux
 //!
 //! * Log panic message by default.
 //!
-//! * Supports signal listening for log-rotate. Refer to [Builder]::signal()
+//! * Supports signal listening for log-rotate. Refer to [Builder::signal()]
 //!
-//! * Fine-grain module-level control.
+//! * [Fine-grain module-level control](#fine-grain-module-level-control)
 //!
-//!   Provides [LogFilter] to filter specified logs on-the-fly.
-//!
-//! * API-level log handling.
-//!
-//!   Provides [LogFilterKV] for API logging with additional key.
-//!
-//!   For example, you can set `req_id` in `LogFilterKV`, and track the
-//! complete request handling procedure from log.
+//! * [API-level log handling](#api-level-log-handling)
 //!
 //! * For test suits usage:
 //!
-//!   Allow dynamic reconfigure logger setting in different test function.
+//!     + Allow dynamic reconfigure logger setting in different test function.
 //!
-//!   (NOTE: currently signal_listener does not support reconfigure).
+//!       Refer to [Unit test example](#unit-test-example).
 //!
-//!   Provides an attribute macro [#\[logfn\]] to wrap test function.
-//!  Logging test-start and test-end.
+//!     + Provides an attribute macro #\[logfn\] to wrap test function.
 //!
-//! * Provides a [parser] to work on your log files.
+//!       Refer to [Best practice][crate::logfn].
+//!
+//!
+//! * Provides a [LogParser](crate::parser::LogParser) to work on your log files.
 //!
 //! ## Usage
 //!
@@ -58,7 +53,7 @@
 //!
 //! ## Production example:
 //!
-//! <font color=Blue>Refer to recipe in `recipe` module, including console & file output. </font>
+//! <font color=Blue>Refer to [recipe] module for more example. </font>
 //!
 //! ```rust
 
@@ -77,32 +72,6 @@
 //! // will appear in both /tmp/test.log and /tmp/test.log.wf
 //! error!("Engine over heat!");
 //!
-//! ```
-//!
-//! ## Unit test example
-//!
-//! To setup different log config on different tests.
-//!
-//! call <font color=Blue> test() </font> on [Builder],
-//! which enable dynamic log config and disable signal_hook.
-//!
-//! ```rust
-//! use log::{debug, info, error, Level};
-//! use captains_log::recipe;
-//!
-//! #[test]
-//! fn test1() {
-//!     recipe::raw_file_logger(
-//!         "/tmp", "test1", Level::Debug).test().build();
-//!     info!("doing test1");
-//! }
-//!
-//! #[test]
-//! fn test2() {
-//!     recipe::raw_file_logger(
-//!         "/tmp", "test2", Level::Debug).test().build();
-//!     info!("doing test2");
-//! }
 //! ```
 //!
 //! ## Customize format example
@@ -154,7 +123,7 @@
 //!
 //! ## API-level log handling
 //!
-//! Request log can be track by custom key `req_id`, which kept in `LogFilterKV`.
+//! Request log can be track by custom key `req_id`, which kept in [LogFilterKV].
 //!
 //! ``` rust
 //! use captains_log::*;
@@ -168,7 +137,7 @@
 //!     let req_id = r.key("req_id");
 //!     format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
 //! }
-//! let builder = recipe::raw_file_logger_custom("/tmp", "log_filter.log", log::Level::Debug,
+//! let builder = recipe::raw_file_logger_custom("/tmp", "log_filter", log::Level::Debug,
 //!     recipe::DEFAULT_TIME, debug_format_req_id_f);
 //! builder.build().expect("setup_log");
 //! let logger = LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
@@ -185,6 +154,90 @@
 //! [2025-06-11 14:33:10.099092][DEBUG][request.rs:67] Req / received (000000000000007b)
 //! [2025-06-11 14:33:10.099232][WARN][request.rs:68] header xxx (000000000000007b)
 //! [2025-06-11 14:33:11.009092][DEBUG][request.rs:67] Req / 200 complete (000000000000007b)
+//! ```
+//!
+//! ## Unit test example
+//!
+//! To setup different log config on different tests.
+//!
+//! call <font color=Blue> test() </font> on [Builder],
+//! which enable dynamic log config and disable signal_hook.
+//!
+//! ```rust
+//! use log::{debug, info, error, Level};
+//! use captains_log::recipe;
+//!
+//! #[test]
+//! fn test1() {
+//!     recipe::raw_file_logger(
+//!         "/tmp", "test1.log", Level::Debug).test().build();
+//!     info!("doing test1");
+//! }
+//!
+//! #[test]
+//! fn test2() {
+//!     recipe::raw_file_logger(
+//!         "/tmp", "test2.log", Level::Debug).test().build();
+//!     info!("doing test2");
+//! }
+//! ```
+//!
+//! ## Best practice with tests
+//!
+//! We provides proc macro [logfn], nice to combine with rstest.
+//!
+//! * When you have large test suit, you want to know which logs belong to which test case.
+//!
+//! * Sometimes your test crashes, you want to find the resposible test case.
+//!
+//! ```
+//! use rstest::*;
+//! use log::*;
+//! use captains_log::*;
+//!
+//! // A show case that setup() fixture will be called twice, before each test.
+//! // In order make logs available.
+//! #[logfn]
+//! #[fixture]
+//! fn setup() {
+//!     let builder = recipe::raw_file_logger("/tmp", "log_rstest", log::Level::Debug).test();
+//!     builder.build().expect("setup_log");
+//! }
+//!
+//! #[logfn]
+//! #[rstest(file_size, case(0), case(1))]
+//! fn test_rstest_foo(setup: (), file_size: usize) {
+//!     info!("do something111");
+//! }
+//!
+//! #[logfn]
+//! #[rstest]
+//! fn test_rstest_bar(setup: ()) {
+//!     info!("do something222");
+//! }
+//!
+//! ```
+//!
+//! After running the test with:
+//! `cargo test -- --test-threads=1`
+//!
+//! /tmp/log_rstest.log will have this content:
+//!
+//! ``` text
+//! [2025-06-21 00:39:37.091326][INFO][test_rstest.rs:11] >>> setup return () >>>
+//! [2025-06-21 00:39:37.091462][INFO][test_rstest.rs:27] <<< test_rstest_bar (setup = ()) enter <<<
+//! [2025-06-21 00:39:37.091493][INFO][test_rstest.rs:30] do something222
+//! [2025-06-21 00:39:37.091515][INFO][test_rstest.rs:27] >>> test_rstest_bar return () >>>
+//! [2025-06-21 00:39:37.091719][INFO][test_rstest.rs:11] <<< setup () enter <<<
+//! [2025-06-21 00:39:37.091826][INFO][test_rstest.rs:11] >>> setup return () >>>
+//! [2025-06-21 00:39:37.091844][INFO][test_rstest.rs:21] <<< test_rstest_foo (setup = (), file_size = 0) enter <<<
+//! [2025-06-21 00:39:37.091857][INFO][test_rstest.rs:24] do something111
+//! [2025-06-21 00:39:37.091868][INFO][test_rstest.rs:21] >>> test_rstest_foo return () >>>
+//! [2025-06-21 00:39:37.092063][INFO][test_rstest.rs:11] <<< setup () enter <<<
+//! [2025-06-21 00:39:37.092136][INFO][test_rstest.rs:11] >>> setup return () >>>
+//! [2025-06-21 00:39:37.092151][INFO][test_rstest.rs:21] <<< test_rstest_foo (setup = (), file_size = 1) enter <<<
+//! [2025-06-21 00:39:37.092163][INFO][test_rstest.rs:24] do something111
+//! [2025-06-21 00:39:37.092173][INFO][test_rstest.rs:21] >>> test_rstest_foo return () >>>
 //! ```
 
 extern crate captains_log_helper;

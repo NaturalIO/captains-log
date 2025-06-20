@@ -189,7 +189,7 @@ fn generate_function(closure: &ExprClosure, args: Args, fn_name: String, sig: &S
 /// After running the test with:
 /// `cargo test -- --test-threads=1`
 ///
-/// /tmp/log_rstest.log will have the content:
+/// /tmp/log_rstest.log will have this content:
 ///
 /// ``` text
 /// [2025-06-21 00:39:37.091326][INFO][test_rstest.rs:11] >>> setup return () >>>

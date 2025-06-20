@@ -89,32 +89,6 @@ info!("Engage");
 // will appear in both /tmp/test.log and /tmp/test.log.wf
 error!("Engine over heat!");
 
-## Unit test example
-
-To setup different log config on different tests.
-
-call <font color=Blue> test() </font> on [Builder],
-which enable dynamic log config and disable signal_hook.
-
-```rust
-
-use log::{debug, info, error, Level};
-use captains_log::recipe;
-
-#[test]
-fn test1() {
-    recipe::raw_file_logger(
-        "/tmp", "test1.log", Level::Debug).test().build();
-    info!("doing test1");
-}
-
-#[test]
-fn test2() {
-    recipe::raw_file_logger(
-        "/tmp", "test2.log", Level::Debug).test().build();
-    info!("doing test2");
-}
-```
 
 ## Customize format example
 
@@ -178,7 +152,7 @@ fn debug_format_req_id_f(r: FormatRecord) -> String {
     let req_id = r.key("req_id");
     format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
 }
-let builder = recipe::raw_file_logger_custom("/tmp", "log_filter.log", log::Level::Debug,
+let builder = recipe::raw_file_logger_custom("/tmp", "log_filter", log::Level::Debug,
     recipe::DEFAULT_TIME, debug_format_req_id_f);
 builder.build().expect("setup_log");
 let logger = LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
@@ -195,3 +169,87 @@ The log will be:
 [2025-06-11 14:33:10.099232][WARN][request.rs:68] header xxx (000000000000007b)
 [2025-06-11 14:33:11.009092][DEBUG][request.rs:67] Req / 200 complete (000000000000007b)
 
+## Unit test example
+
+To setup different log config on different tests.
+
+call <font color=Blue> test() </font> on [Builder],
+which enable dynamic log config and disable signal_hook.
+
+```rust
+
+use log::{debug, info, error, Level};
+use captains_log::recipe;
+
+#[test]
+fn test1() {
+    recipe::raw_file_logger(
+        "/tmp", "test1", Level::Debug).test().build();
+    info!("doing test1");
+}
+
+#[test]
+fn test2() {
+    recipe::raw_file_logger(
+        "/tmp", "test2", Level::Debug).test().build();
+    info!("doing test2");
+}
+```
+
+## Best practice with test suit
+
+We provides proc macro #[logfn], nice to combine with rstest.
+
+* When you have large test suit, you want to know which logs belong to which test case.
+
+* Sometimes your test crashes, you want to find the resposible test case.
+
+```
+use rstest::*;
+use log::*;
+use captains_log::*;
+
+// A show case that setup() fixture will be called twice, before each test.
+// In order make logs available.
+#[logfn]
+#[fixture]
+fn setup() {
+    let builder = recipe::raw_file_logger("/tmp", "log_rstest", log::Level::Debug).test();
+    builder.build().expect("setup_log");
+}
+
+#[logfn]
+#[rstest(file_size, case(0), case(1))]
+fn test_rstest_foo(setup: (), file_size: usize) {
+    info!("do something111");
+}
+
+#[logfn]
+#[rstest]
+fn test_rstest_bar(setup: ()) {
+    info!("do something222");
+}
+
+```
+
+After running the test with:
+`cargo test -- --test-threads=1`
+
+/tmp/log_rstest.log will have this content:
+
+``` text
+[2025-06-21 00:39:37.091326][INFO][test_rstest.rs:11] >>> setup return () >>>
+[2025-06-21 00:39:37.091462][INFO][test_rstest.rs:27] <<< test_rstest_bar (setup = ()) enter <<<
+[2025-06-21 00:39:37.091493][INFO][test_rstest.rs:30] do something222
+[2025-06-21 00:39:37.091515][INFO][test_rstest.rs:27] >>> test_rstest_bar return () >>>
+[2025-06-21 00:39:37.091719][INFO][test_rstest.rs:11] <<< setup () enter <<<
+[2025-06-21 00:39:37.091826][INFO][test_rstest.rs:11] >>> setup return () >>>
+[2025-06-21 00:39:37.091844][INFO][test_rstest.rs:21] <<< test_rstest_foo (setup = (), file_size = 0) enter <<<
+[2025-06-21 00:39:37.091857][INFO][test_rstest.rs:24] do something111
+[2025-06-21 00:39:37.091868][INFO][test_rstest.rs:21] >>> test_rstest_foo return () >>>
+[2025-06-21 00:39:37.092063][INFO][test_rstest.rs:11] <<< setup () enter <<<
+[2025-06-21 00:39:37.092136][INFO][test_rstest.rs:11] >>> setup return () >>>
+[2025-06-21 00:39:37.092151][INFO][test_rstest.rs:21] <<< test_rstest_foo (setup = (), file_size = 1) enter <<<
+[2025-06-21 00:39:37.092163][INFO][test_rstest.rs:24] do something111
+[2025-06-21 00:39:37.092173][INFO][test_rstest.rs:21] >>> test_rstest_foo return () >>>
+```
