@@ -1,6 +1,6 @@
 [package]
 name = "captains-log"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 authors = ["plan <frostyplanet@gmail.com>"]
 categories = ["development-tools::debugging"]
@@ -21,7 +21,7 @@ libc = { version= "0" }
 chrono = "0.4"
 parking_lot = "0"
 backtrace = "0.3"
-captains-log-helper = "0.1.0"
+captains-log-helper = "0.2.0"
 exitcode = "1"
 lazy_static = "1.4"
 arc-swap = "1"
