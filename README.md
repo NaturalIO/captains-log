@@ -12,21 +12,21 @@ A light-weight customizable logger implementation for rust
 
 ## Features
 
-* Allow customize log format and time format.
+* Allow customize log format and time format. Refer to `LogFormat`
 
-* Supports signal listening for log-rotate.
+* Supports multiple types of sink stacking, each with its own log level.
 
-* Supports multiple log files, each with its own log level.
+    + `Builder::console(LogConsole)`:   Console output to stdout/stderr.
 
-* Supports hook on panic.
+    + `Builder::raw_file(LogRawFile)`:  Support atomic appending from multi-process on linux
 
-* Supports multi-process/thread/coroutines
+* Log panic message by default.
 
-  Atomic line appending into the same file can be done on Linux
+* Supports signal listening for log-rotate. Refer to `Builder::signal()`
 
 * Fine-grain module-level log control.
 
-  Provides `LogFilter` to filter specified logs on-the-fly
+  Provides `LogFilter` to filter specified logs on-the-fly.
 
 * API-level log handling.
 
@@ -43,9 +43,11 @@ complete request handling procedure from log.
 
   Provides an attribute macro #[logfn] to wrap test function. Logging test-start and test-end.
 
-* Provides a `LogParser` to work on your log files.
+* Provides a `parser` to work on your log files.
 
-## Dependency
+## Usage
+
+Cargo.toml
 
 ``` toml
 [dependencies]
@@ -53,7 +55,15 @@ log = { version = "0.4", features = ["std", "kv_unstable"] }
 captains_log = "0.3"
 ```
 
-## Fast setup example:
+lib.rs or main.rs:
+```
+#[macro_use]
+extern crate captains_log;
+#[macro_use]
+extern crate log;
+```
+
+## Production example
 
 You can refer to various preset recipe in `recipe` module, including console & file output.
 
@@ -66,7 +76,10 @@ You can refer to various preset recipe in `recipe` module, including console & f
 use log::{debug, info, error};
 use captains_log::recipe::split_error_file_logger;
 
-let log_builder = split_error_file_logger("/tmp", "test", log::Level::Debug);
+// You'll get /tmp/test.log with all logs, and /tmp/test.log.wf only with error logs.
+
+let mut log_builder = split_error_file_logger("/tmp", "test", log::Level::Debug);
+// Builder::build() is equivalent of setup_log()
 log_builder.build();
 
 // non-error msg will only appear in /tmp/test.log
@@ -76,7 +89,33 @@ info!("Engage");
 // will appear in both /tmp/test.log and /tmp/test.log.wf
 error!("Engine over heat!");
 
+## Unit test example
+
+To setup different log config on different tests.
+
+call <font color=Blue> test() </font> on [Builder],
+which enable dynamic log config and disable signal_hook.
+
+```rust
+
+use log::{debug, info, error, Level};
+use captains_log::recipe;
+
+#[test]
+fn test1() {
+    recipe::raw_file_logger(
+        "/tmp", "test1.log", Level::Debug).test().build();
+    info!("doing test1");
+}
+
+#[test]
+fn test2() {
+    recipe::raw_file_logger(
+        "/tmp", "test2.log", Level::Debug).test().build();
+    info!("doing test2");
+}
 ```
+
 ## Customize format example
 
 ``` rust
