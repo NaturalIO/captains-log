@@ -96,11 +96,11 @@ let debug_format = LogFormat::new(
     "%Y%m%d %H:%M:%S%.6f",
     format_f,
 );
-let debug_file = LogFile::new(
+let debug_file = LogRawFile::new(
     "/tmp", "test.log", log::Level::Trace, debug_format);
 let config = Builder::default()
     .signal(signal_hook::consts::SIGINT)
-    .file(debug_file);
+    .raw_file(debug_file);
 
 config.build();
 ```
@@ -139,7 +139,7 @@ fn debug_format_req_id_f(r: FormatRecord) -> String {
     let req_id = r.key("req_id");
     format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
 }
-let builder = recipe::file_logger_custom("/tmp", "log_filter.log", log::Level::Debug,
+let builder = recipe::raw_file_logger_custom("/tmp", "log_filter.log", log::Level::Debug,
     recipe::DEFAULT_TIME, debug_format_req_id_f);
 builder.build().expect("setup_log");
 let logger = LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());

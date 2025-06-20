@@ -1,5 +1,5 @@
 use crate::{
-    config::{LogFile, LogFormat},
+    config::{LogFormat, LogRawFile},
     log_impl::LoggerSinkTrait,
     time::Timer,
 };
@@ -21,7 +21,7 @@ fn open_file(path: &Path) -> std::io::Result<std::fs::File> {
 }
 
 impl LoggerSinkFile {
-    pub fn new(config: &LogFile) -> Self {
+    pub fn new(config: &LogRawFile) -> Self {
         Self {
             path: config.file_path.clone(),
             max_level: config.level,

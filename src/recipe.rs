@@ -1,5 +1,5 @@
 use crate::{
-    config::{Builder, ConsoleTarget, FormatFunc, LogConsole, LogFile, LogFormat},
+    config::{Builder, ConsoleTarget, FormatFunc, LogConsole, LogFormat, LogRawFile},
     formatter::FormatRecord,
 };
 use log::Level;
@@ -66,13 +66,13 @@ pub fn stderr_test_logger(max_level: Level) -> Builder {
 
 /// In this funtion, setup one log file, with custom time_fmt & format_func.
 /// See the source for details.
-pub fn file_logger_custom(
+pub fn raw_file_logger_custom(
     dir: &str, name: &str, max_level: Level, time_fmt: &str, format_func: FormatFunc,
 ) -> Builder {
     let debug_format = LogFormat::new(time_fmt, format_func);
     let debug_file =
-        LogFile::new(dir, &format!("{}.log", name).to_string(), max_level, debug_format);
-    let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).file(debug_file);
+        LogRawFile::new(dir, &format!("{}.log", name).to_string(), max_level, debug_format);
+    let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).raw_file(debug_file);
     // panic on debuging
     #[cfg(debug_assertions)]
     {
@@ -88,8 +88,8 @@ pub fn file_logger_custom(
 
 /// In this funtion, setup one log file.
 /// See the source for details.
-pub fn file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
-    file_logger_custom(dir, name, max_level, DEFAULT_TIME, debug_format_f)
+pub fn raw_file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
+    raw_file_logger_custom(dir, name, max_level, DEFAULT_TIME, debug_format_f)
 }
 
 /// In this funtion, setup two log files.
@@ -101,12 +101,14 @@ pub fn split_error_file_logger(dir: &str, name: &str, max_level: Level) -> Build
 
     let err_format = LogFormat::new(DEFAULT_TIME, error_format_f);
     let debug_file =
-        LogFile::new(dir, &format!("{}.log", name).to_string(), max_level, debug_format);
+        LogRawFile::new(dir, &format!("{}.log", name).to_string(), max_level, debug_format);
     let error_file =
-        LogFile::new(dir, &format!("{}.log.wf", name).to_string(), Level::Error, err_format);
+        LogRawFile::new(dir, &format!("{}.log.wf", name).to_string(), Level::Error, err_format);
 
-    let mut config =
-        Builder::default().signal(signal_hook::consts::SIGUSR1).file(debug_file).file(error_file);
+    let mut config = Builder::default()
+        .signal(signal_hook::consts::SIGUSR1)
+        .raw_file(debug_file)
+        .raw_file(error_file);
 
     // panic on debuging
     #[cfg(debug_assertions)]

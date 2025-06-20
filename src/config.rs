@@ -11,7 +11,6 @@ use std::path::Path;
 
 /// Global config to setup logger
 /// See crate::recipe for usage
-
 #[derive(Default)]
 pub struct Builder {
     /// When dynamic==true,
@@ -47,8 +46,8 @@ impl Builder {
         self
     }
 
-    /// Add file sink
-    pub fn file(mut self, config: LogFile) -> Self {
+    /// Add raw file sink that supports multiprocess atomic append
+    pub fn raw_file(mut self, config: LogRawFile) -> Self {
         self.sinks.push(Box::new(config));
         self
     }
@@ -80,15 +79,15 @@ impl Builder {
 
 pub trait SinkConfigTrait {
     fn get_level(&self) -> Level;
-    /// Only LogFile has path
+    /// Only LogRawFile has path
     fn get_file_path(&self) -> Option<Box<Path>>;
     fn build(&self) -> LoggerSink;
 }
 
 pub type FormatFunc = fn(FormatRecord) -> String;
 
-#[derive(Clone)]
 /// Custom formatter which adds into a log sink
+#[derive(Clone)]
 pub struct LogFormat {
     time_fmt: String,
     format_fn: FormatFunc,
@@ -105,7 +104,7 @@ impl LogFormat {
     ///
     /// # Example
     /// ```
-    /// use captains_log::{LogFile, LogFormat, FormatRecord};
+    /// use captains_log::{LogRawFile, LogFormat, FormatRecord};
     /// fn format_f(r: FormatRecord) -> String {
     ///     let time = r.time();
     ///     let level = r.level();
@@ -114,7 +113,7 @@ impl LogFormat {
     ///     format!("[{time}][{level}] {msg}{req_id}\n").to_string()
     /// }
     /// let log_format = LogFormat::new("%Y-%m-%d %H:%M:%S%.6f", format_f);
-    /// let log_sink = LogFile::new("/tmp", "test.log", log::Level::Info, log_format);
+    /// let log_sink = LogRawFile::new("/tmp", "test.log", log::Level::Info, log_format);
     /// ```
 
     pub fn new(time_fmt: &str, format_fn: FormatFunc) -> Self {
@@ -129,8 +128,9 @@ impl LogFormat {
     }
 }
 
-/// Config for file sink
-pub struct LogFile {
+/// Config for file sink that supports atomic append from multiprocess.
+/// For log rotation, you need system log-rotate service to notify with signal.
+pub struct LogRawFile {
     /// Directory path
     pub dir: String,
 
@@ -146,14 +146,14 @@ pub struct LogFile {
     pub file_path: Box<Path>,
 }
 
-impl LogFile {
+impl LogRawFile {
     pub fn new(dir: &str, name: &str, level: Level, format: LogFormat) -> Self {
         let file_path = Path::new(dir).join(Path::new(name)).into_boxed_path();
         Self { dir: dir.to_string(), name: name.to_string(), level, format, file_path }
     }
 }
 
-impl SinkConfigTrait for LogFile {
+impl SinkConfigTrait for LogRawFile {
     fn get_level(&self) -> Level {
         self.level
     }
