@@ -41,6 +41,14 @@ impl Builder {
         Self::default()
     }
 
+    /// For test cases, set dynamic=true and turn Off signal.
+    /// Call this with pre-set recipe for convenient.
+    pub fn test(mut self) -> Self {
+        self.dynamic = true;
+        self.rotation_signals.clear();
+        self
+    }
+
     /// Add log-rotate signal
     pub fn signal(mut self, signal: i32) -> Self {
         self.rotation_signals.push(signal);

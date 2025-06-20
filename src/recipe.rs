@@ -46,9 +46,7 @@ pub fn stdout_logger(max_level: Level) -> Builder {
 
 /// Output to stdout, with dynamic=true for test cases.
 pub fn stdout_test_logger(max_level: Level) -> Builder {
-    let mut builder = stdout_logger(max_level);
-    builder.dynamic = true;
-    builder
+    stdout_logger(max_level).test()
 }
 
 #[inline]
@@ -59,9 +57,7 @@ pub fn stderr_logger(max_level: Level) -> Builder {
 /// Output to stderr, with dynamic=true for test cases.
 #[inline]
 pub fn stderr_test_logger(max_level: Level) -> Builder {
-    let mut builder = stderr_logger(max_level);
-    builder.dynamic = true;
-    builder
+    stderr_logger(max_level).test()
 }
 
 /// In this funtion, setup one log file, with custom time_fmt & format_func.
