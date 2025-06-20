@@ -1,10 +1,9 @@
 #![recursion_limit = "128"]
 use proc_macro2::Span;
-use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{
     parse_macro_input, spanned::Spanned, token, Expr, ExprBlock, ExprClosure,
-    ItemFn, Result, ReturnType, LitStr, Ident, Token,
+    ItemFn, Result, ReturnType, LitStr, Ident, Signature, FnArg, Pat, PatType,
 };
 use syn::parse::{Parse, ParseStream};
 
@@ -72,17 +71,39 @@ fn replace_function_headers(original: ItemFn, new: &mut ItemFn) {
     new.block = block;
 }
 
-fn generate_function(closure: &ExprClosure, args: Args, fn_name: String) -> Result<ItemFn> {
+fn gen_arg_list(sig: &Signature) -> String {
+    let mut arg_list = String::new();
+    for (i, input) in sig.inputs.iter().enumerate() {
+        if i > 0 {
+            arg_list.push_str(", ");
+        }
+        match input {
+            FnArg::Typed(PatType { pat, .. }) => {
+                if let Pat::Ident(pat_ident) = &**pat {
+                    let ident = &pat_ident.ident;
+                    arg_list.push_str(&format!("{ident} = {{{ident}:?}}"));
+                }
+            }
+            FnArg::Receiver(_) => {
+                arg_list.push_str("self");
+            }
+        }
+    }
+    arg_list
+}
+
+fn generate_function(closure: &ExprClosure, args: Args, fn_name: String, sig: &Signature) -> Result<ItemFn> {
     let level = args.level.unwrap_or("info".to_string());
     let level = Ident::new(&level, Span::call_site());
-    let fmt_begin = format!("+++ {} begin +++", fn_name);
-    let fmt_end = format!("--- {} end ---", fn_name);
+    let arg_list = gen_arg_list(sig);
+    let fmt_begin = format!("<<< {} ({}) enter <<<", fn_name, arg_list);
+    let fmt_end = format!(">>> {} return {{__ret_value:?}} >>>", fn_name);
     let begin_expr = quote! {log::#level!(#fmt_begin); };
     let end_expr = quote! {log::#level!(#fmt_end); };
     let code = quote! {
         fn temp() {
             #begin_expr;
-            let _ = (#closure)();
+            let __ret_value = (#closure)();
             #end_expr;
         }
     };
@@ -124,7 +145,7 @@ pub fn logfn(
     let fn_name = original_fn.sig.ident.to_string();
     let closure = make_closure(&original_fn);
     let mut new_fn =
-        generate_function(&closure, args, fn_name).expect("Failed Generating Function");
+        generate_function(&closure, args, fn_name, &original_fn.sig).expect("Failed Generating Function");
     replace_function_headers(original_fn, &mut new_fn);
     new_fn.into_token_stream().into()
 }
