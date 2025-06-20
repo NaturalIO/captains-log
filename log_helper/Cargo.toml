@@ -16,6 +16,7 @@ quote = "1"
 [dev-dependencies]
 log = "0.4"
 captains-log = "0.4"
+rstest = "0"
 
 [lib]
 proc-macro = true
