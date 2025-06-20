@@ -53,10 +53,9 @@
 //!
 //! ## Production example
 //!
-//! <font color=Blue>Refer to [recipe] module for more example. </font>
+//! Refer to [recipe] module for more example.
 //!
 //! ```rust
-
 //! use log::{debug, info, error};
 //! use captains_log::recipe::split_error_file_logger;
 //!
@@ -71,7 +70,6 @@
 //!
 //! // will appear in both /tmp/test.log and /tmp/test.log.wf
 //! error!("Engine over heat!");
-//!
 //! ```
 //!
 //! ## Customize format example
@@ -158,7 +156,7 @@
 //!
 //! To setup different log config on different tests.
 //!
-//! call <font color=Blue> test() </font> on [Builder],
+//! **Make sure that you call [Builder::test()]** in test cases.
 //! which enable dynamic log config and disable signal_hook.
 //!
 //! ```rust
