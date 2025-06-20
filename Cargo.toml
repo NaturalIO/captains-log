@@ -30,3 +30,4 @@ regex = "1"
 
 [dev-dependencies]
 fmutex = "0"
+rstest = "0"
