@@ -29,8 +29,10 @@ pub enum LoggerSink {
 
 /// Global static structure to hold the logger
 struct GlobalLogger {
-    // Global static needs initialization when declaring,
-    // default to be empty
+    /// checksum for config comparision
+    config_checksum: u64,
+    /// Global static needs initialization when declaring,
+    /// default to be empty
     inner: Option<LoggerInner>,
     signal_listener: AtomicBool,
 }
@@ -90,9 +92,17 @@ impl GlobalLogger {
 
     #[allow(dead_code)]
     fn init(&mut self, builder: &Builder) -> std::io::Result<bool> {
-        if !builder.dynamic && self.inner.is_some() {
-            panic_or_error();
-            return Ok(false);
+        let new_checksum = builder.cal_checksum();
+        if self.inner.is_some() {
+            if self.config_checksum == new_checksum {
+                // Config is the same, no need to reinit
+                self.reopen()?;
+                return Ok(true);
+            }
+            if !builder.dynamic {
+                panic_or_error();
+                return Ok(false);
+            }
         }
         let mut sinks = Vec::new();
         for config in &builder.sinks {
@@ -110,6 +120,7 @@ impl GlobalLogger {
                 self.inner.replace(LoggerInner::Once(sinks));
             }
         }
+        self.config_checksum = new_checksum;
 
         let _ = unsafe { set_logger(transmute::<&Self, &'static Self>(self)) };
 
@@ -156,6 +167,7 @@ lazy_static! {
     // Mutex only access on init and reopen, bypassed while logging,
     // because crate log only use const raw pointer to access GlobalLogger.
     static ref GLOBAL_LOGGER: Mutex<GlobalLogger> = Mutex::new(GlobalLogger {
+        config_checksum: 0,
         inner: None ,
         signal_listener: AtomicBool::new(false),
     });

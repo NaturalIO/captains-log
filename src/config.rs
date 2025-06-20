@@ -7,6 +7,7 @@ use crate::{
     time::Timer,
 };
 use log::{Level, LevelFilter, Record};
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::Path;
 
 /// Global config to setup logger
@@ -70,6 +71,19 @@ impl Builder {
         return max_level.to_level_filter();
     }
 
+    /// Calculate checksum of the setting for init() comparision
+    pub(crate) fn cal_checksum(&self) -> u64 {
+        let mut hasher = Box::new(DefaultHasher::new()) as Box<dyn Hasher>;
+        self.dynamic.hash(&mut hasher);
+        self.rotation_signals.hash(&mut hasher);
+        self.panic.hash(&mut hasher);
+        self.continue_when_panic.hash(&mut hasher);
+        for sink in &self.sinks {
+            sink.write_hash(&mut hasher);
+        }
+        hasher.finish()
+    }
+
     /// Setup global logger.
     /// Equals to setup_log(builder)
     pub fn build(self) -> Result<(), ()> {
@@ -78,16 +92,20 @@ impl Builder {
 }
 
 pub trait SinkConfigTrait {
+    /// get max log level of the sink
     fn get_level(&self) -> Level;
-    /// Only LogRawFile has path
+    /// Only file sink has path
     fn get_file_path(&self) -> Option<Box<Path>>;
+    /// Calculate hash for config comparision
+    fn write_hash(&self, hasher: &mut Box<dyn Hasher>);
+    /// Build an actual sink from config
     fn build(&self) -> LoggerSink;
 }
 
 pub type FormatFunc = fn(FormatRecord) -> String;
 
 /// Custom formatter which adds into a log sink
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct LogFormat {
     time_fmt: String,
     format_fn: FormatFunc,
@@ -130,6 +148,7 @@ impl LogFormat {
 
 /// Config for file sink that supports atomic append from multiprocess.
 /// For log rotation, you need system log-rotate service to notify with signal.
+#[derive(Hash)]
 pub struct LogRawFile {
     /// Directory path
     pub dir: String,
@@ -162,18 +181,24 @@ impl SinkConfigTrait for LogRawFile {
         Some(self.file_path.clone())
     }
 
+    fn write_hash(&self, hasher: &mut Box<dyn Hasher>) {
+        self.hash(hasher);
+        hasher.write(b"LogRawFile");
+    }
+
     fn build(&self) -> LoggerSink {
         LoggerSink::File(LoggerSinkFile::new(self))
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash)]
 #[repr(u8)]
 pub enum ConsoleTarget {
     Stdout = 1,
     Stderr = 2,
 }
 
+#[derive(Hash)]
 pub struct LogConsole {
     pub target: ConsoleTarget,
 
@@ -196,6 +221,11 @@ impl SinkConfigTrait for LogConsole {
 
     fn get_file_path(&self) -> Option<Box<Path>> {
         None
+    }
+
+    fn write_hash(&self, hasher: &mut Box<dyn Hasher>) {
+        self.hash(hasher);
+        hasher.write(b"LogConsole");
     }
 
     fn build(&self) -> LoggerSink {
