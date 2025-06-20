@@ -51,7 +51,7 @@
 //! extern crate log;
 //! ```
 //!
-//! ## Production example:
+//! ## Production example
 //!
 //! <font color=Blue>Refer to [recipe] module for more example. </font>
 //!
@@ -80,7 +80,7 @@
 //! extern crate signal_hook;
 //! extern crate chrono;
 //! use captains_log::*;
-
+//!
 //! fn format_f(r: FormatRecord) -> String {
 //!     let time = r.time();
 //!     let level = r.level();
@@ -98,13 +98,12 @@
 //! let config = Builder::default()
 //!     .signal(signal_hook::consts::SIGINT)
 //!     .raw_file(debug_file);
-//!
 //! config.build();
 //! ```
 //!
 //! ## Fine-grain module-level control
 //!
-//! Place `LogFilter` in Arc and share among coroutines.
+//! Place [LogFilter] in Arc and share among coroutines.
 //! Log level can be changed on-the-fly.
 //!
 //! ``` rust
@@ -118,7 +117,6 @@
 //! logger_debug!(logger_req, "Begin handle req ...");
 //! logger_debug!(logger_io, "Issue io to disk ...");
 //! logger_error!(logger_req, "Req invalid ...");
-//!
 //! ```
 //!
 //! ## API-level log handling
