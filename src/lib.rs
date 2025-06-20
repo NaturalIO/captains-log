@@ -45,7 +45,7 @@
 //! ``` toml
 //! [dependencies]
 //! log = { version = "0.4", features = ["std", "kv_unstable"] }
-//! captains_log = "0.3"
+//! captains_log = "0.4"
 //! ```
 //!
 //! lib.rs or main.rs:
