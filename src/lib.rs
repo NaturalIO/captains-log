@@ -75,8 +75,6 @@
 //! ## Customize format example
 //!
 //! ``` rust
-//! extern crate signal_hook;
-//! extern crate chrono;
 //! use captains_log::*;
 //!
 //! fn format_f(r: FormatRecord) -> String {
