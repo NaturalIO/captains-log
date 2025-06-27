@@ -26,7 +26,7 @@ fn console_logger(target: ConsoleTarget, max_level: Level) -> Builder {
     let debug_format = LogFormat::new(DEFAULT_TIME, debug_format_f);
     let console_config = LogConsole::new(target, max_level, debug_format);
     let mut config = Builder::default().console(console_config);
-    // panic on debuging
+    // panic on debugging
     #[cfg(debug_assertions)]
     {
         config.continue_when_panic = false;
@@ -60,7 +60,7 @@ pub fn stderr_test_logger(max_level: Level) -> Builder {
     stderr_logger(max_level).test()
 }
 
-/// In this funtion, setup one log file, with custom time_fmt & format_func.
+/// Setup one log file, with custom time_fmt & format_func.
 /// See the source for details.
 pub fn raw_file_logger_custom(
     dir: &str, name: &str, max_level: Level, time_fmt: &str, format_func: FormatFunc,
@@ -69,7 +69,7 @@ pub fn raw_file_logger_custom(
     let debug_file =
         LogRawFile::new(dir, &format!("{}.log", name).to_string(), max_level, debug_format);
     let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).raw_file(debug_file);
-    // panic on debuging
+    // panic on debugging
     #[cfg(debug_assertions)]
     {
         config.continue_when_panic = false;
@@ -82,13 +82,13 @@ pub fn raw_file_logger_custom(
     return config;
 }
 
-/// In this funtion, setup one log file.
+/// Setup one log file.
 /// See the source for details.
 pub fn raw_file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
     raw_file_logger_custom(dir, name, max_level, DEFAULT_TIME, debug_format_f)
 }
 
-/// In this funtion, setup two log files.
+/// Setup two log files.
 /// One for debug purpose, with code file line to track problem.
 /// One for error log.
 /// See the source for details.
@@ -106,7 +106,7 @@ pub fn split_error_file_logger(dir: &str, name: &str, max_level: Level) -> Build
         .raw_file(debug_file)
         .raw_file(error_file);
 
-    // panic on debuging
+    // panic on debugging
     #[cfg(debug_assertions)]
     {
         config.continue_when_panic = false;

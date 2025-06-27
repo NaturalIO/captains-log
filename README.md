@@ -201,7 +201,7 @@ We provides proc macro #[logfn], nice to combine with rstest.
 
 * When you have large test suit, you want to know which logs belong to which test case.
 
-* Sometimes your test crashes, you want to find the resposible test case.
+* Sometimes your test crashes, you want to find the responsible test case.
 
 ``` rust
 use rstest::*;

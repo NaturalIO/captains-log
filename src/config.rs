@@ -79,7 +79,7 @@ impl Builder {
         return max_level.to_level_filter();
     }
 
-    /// Calculate checksum of the setting for init() comparision
+    /// Calculate checksum of the setting for init() comparison
     pub(crate) fn cal_checksum(&self) -> u64 {
         let mut hasher = Box::new(DefaultHasher::new()) as Box<dyn Hasher>;
         self.dynamic.hash(&mut hasher);
@@ -104,7 +104,7 @@ pub trait SinkConfigTrait {
     fn get_level(&self) -> Level;
     /// Only file sink has path
     fn get_file_path(&self) -> Option<Box<Path>>;
-    /// Calculate hash for config comparision
+    /// Calculate hash for config comparison
     fn write_hash(&self, hasher: &mut Box<dyn Hasher>);
     /// Build an actual sink from config
     fn build(&self) -> LoggerSink;

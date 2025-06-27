@@ -156,7 +156,7 @@ fn generate_function(closure: &ExprClosure, args: Args, fn_name: String, sig: &S
 ///
 /// * When you have large test suit, you want to know which logs belong to which test case.
 ///
-/// * Sometimes your test crashes, you want to find the resposible test case.
+/// * Sometimes your test crashes, you want to find the responsible test case.
 ///
 /// ``` rust
 /// use rstest::*;

@@ -29,7 +29,7 @@ pub enum LoggerSink {
 
 /// Global static structure to hold the logger
 struct GlobalLogger {
-    /// checksum for config comparision
+    /// checksum for config comparison
     config_checksum: u64,
     /// Global static needs initialization when declaring,
     /// default to be empty
