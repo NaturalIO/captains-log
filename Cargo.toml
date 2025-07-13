@@ -1,6 +1,6 @@
 [package]
 name = "captains-log"
-version = "0.4.6"
+version = "0.4.7"
 edition = "2024"
 authors = ["plan <frostyplanet@gmail.com>"]
 categories = ["development-tools::debugging"]
@@ -21,7 +21,7 @@ libc = { version= "0" }
 chrono = "0.4"
 parking_lot = "0"
 backtrace = "0.3"
-captains-log-helper = "0.2.0"
+captains-log-helper = "0.3.0"
 exitcode = "1"
 lazy_static = "1.4"
 arc-swap = "1"
@@ -31,3 +31,4 @@ regex = "1"
 [dev-dependencies]
 fmutex = "0"
 rstest = "0"
+tokio = { version="1", features = ["rt-multi-thread", "macros"]}
