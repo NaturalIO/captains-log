@@ -8,7 +8,6 @@ static INIT: Once = Once::new();
 
 mod common;
 
-#[logfn]
 #[fixture]
 fn setup() {
     INIT.call_once(|| {
@@ -28,4 +27,11 @@ fn test_rstest_foo(setup: (), file_size: usize) {
 #[rstest]
 fn test_rstest_bar(setup: ()) {
     info!("do something222");
+}
+
+#[tokio::test]
+#[logfn]
+#[rstest]
+async fn test_rstest_async(setup: ()) {
+    info!("something333")
 }
