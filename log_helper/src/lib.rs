@@ -1,3 +1,7 @@
+//! This is sub-crate of [captains-log](https://docs.rs/captains-log/latest/captains_log/)
+//!
+//! Provides a attribute macro [macro@logfn] to wrap function for convenience.
+
 #![recursion_limit = "128"]
 use proc_macro2::Span;
 use quote::quote;
@@ -201,8 +205,13 @@ fn output_stream(input: &ItemFn, func_body: proc_macro2::TokenStream) -> proc_ma
 }
 
 
-/// Provide an proc_macro `#[logfn]` which log the function call begin and return,
-/// with argument list and return value.
+/// Provide an proc_macro `#[logfn]` which log the infomation:
+///
+/// - function call begin, argument list
+///
+/// - function return value, duration time.
+///
+/// Supports async fn and async-trait >=0.1.44.
 ///
 /// # Examples
 ///
@@ -232,21 +241,23 @@ fn output_stream(input: &ItemFn, func_body: proc_macro2::TokenStream) -> proc_ma
 /// /tmp/log_test.log will have this content:
 ///
 /// ``` text
-/// [2025-06-21 01:00:17.116049][INFO][test_logfn.rs:13] <<< foo () enter <<<
-/// [2025-06-21 01:00:17.116206][INFO][test_logfn.rs:15] foo
-/// [2025-06-21 01:00:17.116223][WARN][test_logfn.rs:19] <<< bar (a = 1, s = "bar arg") enter <<<
-/// [2025-06-21 01:00:17.116236][INFO][test_logfn.rs:21] bar
-/// [2025-06-21 01:00:17.116246][WARN][test_logfn.rs:19] >>> bar return () >>>
-/// [2025-06-21 01:00:17.116256][INFO][test_logfn.rs:13] >>> foo return () >>>
+///[2025-07-13 18:22:39.151481][INFO][test_logfn.rs:19] <<< foo () enter <<<
+///[2025-07-13 18:22:39.151774][INFO][test_logfn.rs:21] foo
+///[2025-07-13 18:22:39.151840][WARN][test_logfn.rs:25] <<< bar (a = 1, s = "bar arg") enter <<<
+///[2025-07-13 18:22:39.151886][INFO][test_logfn.rs:27] bar
+///[2025-07-13 18:22:39.151925][WARN][test_logfn.rs:25] >>> bar return () in 39.183µs >>>
+///[2025-07-13 18:22:39.151969][INFO][test_logfn.rs:19] >>> foo return () in 197.381µs >>>
 /// ```
 ///
 /// # Best practice with test suit
 ///
-/// Nice to have `#[logfn]` used with retest.
+/// You can have `#[logfn]` used with retest.
 ///
 /// * When you have large test suit, you want to know which logs belong to which test case.
 ///
 /// * Sometimes your test crashes, you want to find the responsible test case.
+///
+/// * The time spend in each test
 ///
 /// ``` rust
 /// use rstest::*;
@@ -255,7 +266,6 @@ fn output_stream(input: &ItemFn, func_body: proc_macro2::TokenStream) -> proc_ma
 ///
 /// // A show case that setup() fixture will be called twice, before each test.
 /// // In order make logs available.
-/// #[logfn]
 /// #[fixture]
 /// fn setup() {
 ///     let builder = recipe::raw_file_logger("/tmp", "log_rstest", log::Level::Debug).test();
@@ -274,7 +284,17 @@ fn output_stream(input: &ItemFn, func_body: proc_macro2::TokenStream) -> proc_ma
 ///     info!("do something222");
 /// }
 ///
+/// #[tokio::test]
+/// #[logfn]
+/// #[rstest]
+/// async fn test_rstest_async(setup: ()) {
+///     info!("something333")
+/// }
+///
 /// ```
+///
+/// **Notice:** the order when combine tokio::test with rstest,
+/// `#[rstest]` attribute must be at the bottom to make setup fixture effective.
 ///
 /// After running the test with:
 /// `cargo test -- --test-threads=1`
@@ -282,20 +302,18 @@ fn output_stream(input: &ItemFn, func_body: proc_macro2::TokenStream) -> proc_ma
 /// /tmp/log_rstest.log will have this content:
 ///
 /// ``` text
-/// [2025-06-21 00:39:37.091326][INFO][test_rstest.rs:11] >>> setup return () >>>
-/// [2025-06-21 00:39:37.091462][INFO][test_rstest.rs:27] <<< test_rstest_bar (setup = ()) enter <<<
-/// [2025-06-21 00:39:37.091493][INFO][test_rstest.rs:30] do something222
-/// [2025-06-21 00:39:37.091515][INFO][test_rstest.rs:27] >>> test_rstest_bar return () >>>
-/// [2025-06-21 00:39:37.091719][INFO][test_rstest.rs:11] <<< setup () enter <<<
-/// [2025-06-21 00:39:37.091826][INFO][test_rstest.rs:11] >>> setup return () >>>
-/// [2025-06-21 00:39:37.091844][INFO][test_rstest.rs:21] <<< test_rstest_foo (setup = (), file_size = 0) enter <<<
-/// [2025-06-21 00:39:37.091857][INFO][test_rstest.rs:24] do something111
-/// [2025-06-21 00:39:37.091868][INFO][test_rstest.rs:21] >>> test_rstest_foo return () >>>
-/// [2025-06-21 00:39:37.092063][INFO][test_rstest.rs:11] <<< setup () enter <<<
-/// [2025-06-21 00:39:37.092136][INFO][test_rstest.rs:11] >>> setup return () >>>
-/// [2025-06-21 00:39:37.092151][INFO][test_rstest.rs:21] <<< test_rstest_foo (setup = (), file_size = 1) enter <<<
-/// [2025-06-21 00:39:37.092163][INFO][test_rstest.rs:24] do something111
-/// [2025-06-21 00:39:37.092173][INFO][test_rstest.rs:21] >>> test_rstest_foo return () >>>
+///[2025-07-13 18:22:39.159642][INFO][test_rstest.rs:33] <<< test_rstest_async (setup = ()) enter <<<
+///[2025-07-13 18:22:39.160255][INFO][test_rstest.rs:37] something333
+///[2025-07-13 18:22:39.160567][INFO][test_rstest.rs:33] >>> test_rstest_async return () in 564.047µs >>>
+///[2025-07-13 18:22:39.161299][INFO][test_rstest.rs:26] <<< test_rstest_bar (setup = ()) enter <<<
+///[2025-07-13 18:22:39.161643][INFO][test_rstest.rs:29] do something222
+///[2025-07-13 18:22:39.161703][INFO][test_rstest.rs:26] >>> test_rstest_bar return () in 62.681µs >>>
+///[2025-07-13 18:22:39.162169][INFO][test_rstest.rs:20] <<< test_rstest_foo (setup = (), file_size = 0) enter <<<
+///[2025-07-13 18:22:39.162525][INFO][test_rstest.rs:23] do something111
+///[2025-07-13 18:22:39.162600][INFO][test_rstest.rs:20] >>> test_rstest_foo return () in 78.457µs >>>
+///[2025-07-13 18:22:39.163050][INFO][test_rstest.rs:20] <<< test_rstest_foo (setup = (), file_size = 1) enter <<<
+///[2025-07-13 18:22:39.163320][INFO][test_rstest.rs:23] do something111
+///[2025-07-13 18:22:39.163377][INFO][test_rstest.rs:20] >>> test_rstest_foo return () in 58.747µs >>>
 /// ```
 #[proc_macro_attribute]
 pub fn logfn(
