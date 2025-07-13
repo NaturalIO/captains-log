@@ -182,11 +182,13 @@
 //!
 //! ## Best practice with tests
 //!
-//! We provides proc macro [logfn], nice to combine with rstest.
+//! We provides proc macro [logfn], the following example shows how to combine with rstest.
 //!
 //! * When you have large test suit, you want to know which logs belong to which test case.
 //!
 //! * Sometimes your test crashes, you want to find the responsible test case.
+//!
+//! * The time spend in each test.
 //!
 //! ``` rust
 //!
@@ -196,7 +198,6 @@
 //!
 //! // A show case that setup() fixture will be called twice, before each test.
 //! // In order make logs available.
-//! #[logfn]
 //! #[fixture]
 //! fn setup() {
 //!     let builder = recipe::raw_file_logger("/tmp", "log_rstest", log::Level::Debug).test();
@@ -215,7 +216,17 @@
 //!     info!("do something222");
 //! }
 //!
+//! // NOTE rstest must be at the bottom to make fixture effective
+//! #[tokio::test]
+//! #[logfn]
+//! #[rstest]
+//! async fn test_rstest_async(setup: ()) {
+//!     info!("something333")
+//! }
 //! ```
+//!
+//! **Notice:** the order when combine tokio::test with rstest,
+//! `#[rstest]` attribute must be at the bottom to make setup fixture effective.
 //!
 //! After running the test with:
 //!
@@ -224,20 +235,18 @@
 //! /tmp/log_rstest.log will have this content:
 //!
 //! ``` text
-//! [2025-06-21 00:39:37.091326][INFO][test_rstest.rs:11] >>> setup return () >>>
-//! [2025-06-21 00:39:37.091462][INFO][test_rstest.rs:27] <<< test_rstest_bar (setup = ()) enter <<<
-//! [2025-06-21 00:39:37.091493][INFO][test_rstest.rs:30] do something222
-//! [2025-06-21 00:39:37.091515][INFO][test_rstest.rs:27] >>> test_rstest_bar return () >>>
-//! [2025-06-21 00:39:37.091719][INFO][test_rstest.rs:11] <<< setup () enter <<<
-//! [2025-06-21 00:39:37.091826][INFO][test_rstest.rs:11] >>> setup return () >>>
-//! [2025-06-21 00:39:37.091844][INFO][test_rstest.rs:21] <<< test_rstest_foo (setup = (), file_size = 0) enter <<<
-//! [2025-06-21 00:39:37.091857][INFO][test_rstest.rs:24] do something111
-//! [2025-06-21 00:39:37.091868][INFO][test_rstest.rs:21] >>> test_rstest_foo return () >>>
-//! [2025-06-21 00:39:37.092063][INFO][test_rstest.rs:11] <<< setup () enter <<<
-//! [2025-06-21 00:39:37.092136][INFO][test_rstest.rs:11] >>> setup return () >>>
-//! [2025-06-21 00:39:37.092151][INFO][test_rstest.rs:21] <<< test_rstest_foo (setup = (), file_size = 1) enter <<<
-//! [2025-06-21 00:39:37.092163][INFO][test_rstest.rs:24] do something111
-//! [2025-06-21 00:39:37.092173][INFO][test_rstest.rs:21] >>> test_rstest_foo return () >>>
+//! [2025-07-13 18:22:39.159642][INFO][test_rstest.rs:33] <<< test_rstest_async (setup = ()) enter <<<
+//! [2025-07-13 18:22:39.160255][INFO][test_rstest.rs:37] something333
+//! [2025-07-13 18:22:39.160567][INFO][test_rstest.rs:33] >>> test_rstest_async return () in 564.047µs >>>
+//! [2025-07-13 18:22:39.161299][INFO][test_rstest.rs:26] <<< test_rstest_bar (setup = ()) enter <<<
+//! [2025-07-13 18:22:39.161643][INFO][test_rstest.rs:29] do something222
+//! [2025-07-13 18:22:39.161703][INFO][test_rstest.rs:26] >>> test_rstest_bar return () in 62.681µs >>>
+//! [2025-07-13 18:22:39.162169][INFO][test_rstest.rs:20] <<< test_rstest_foo (setup = (), file_size = 0) enter <<<
+//! [2025-07-13 18:22:39.162525][INFO][test_rstest.rs:23] do something111
+//! [2025-07-13 18:22:39.162600][INFO][test_rstest.rs:20] >>> test_rstest_foo return () in 78.457µs >>>
+//! [2025-07-13 18:22:39.163050][INFO][test_rstest.rs:20] <<< test_rstest_foo (setup = (), file_size = 1) enter <<<
+//! [2025-07-13 18:22:39.163320][INFO][test_rstest.rs:23] do something111
+//! [2025-07-13 18:22:39.163377][INFO][test_rstest.rs:20] >>> test_rstest_foo return () in 58.747µs >>>
 //! ```
 
 extern crate captains_log_helper;
