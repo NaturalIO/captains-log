@@ -134,9 +134,15 @@ fn generate_function(args: Args, block: &Block,
     let level = Ident::new(&level, Span::call_site());
     let arg_list = gen_arg_list(sig);
     let fmt_begin = format!("<<< {} ({}) enter <<<", fn_name, arg_list);
-    let fmt_end = format!(">>> {} return {{__ret_value:?}} >>>", fn_name);
-    let begin_expr = quote! {log::#level!(#fmt_begin); };
-    let end_expr = quote! {log::#level!(#fmt_end); };
+    let fmt_end = format!(">>> {} return {{__ret_value:?}} in {{__dur:?}} >>>", fn_name);
+    let begin_expr = quote! {
+        log::#level!(#fmt_begin);
+        let __start_ts = std::time::Instant::now();
+    };
+    let end_expr = quote! {
+        let __dur = std::time::Instant::now() - __start_ts;
+        log::#level!(#fmt_end);
+    };
 
     if async_context {
         let block = quote::quote_spanned!(block.span()=>
