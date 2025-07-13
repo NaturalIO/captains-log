@@ -1,9 +1,10 @@
 #![recursion_limit = "128"]
 use proc_macro2::Span;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::{
-    parse_macro_input, spanned::Spanned, token, Expr, ExprBlock, ExprClosure,
-    ItemFn, Result, ReturnType, LitStr, Ident, Signature, FnArg, Pat, PatType,
+    parse_macro_input, spanned::Spanned, Expr,
+    ItemFn, LitStr, Ident, Signature, FnArg, Pat, PatType,
+    Block, Stmt, ExprCall,ExprAsync, Generics, Path,
 };
 use syn::parse::{Parse, ParseStream};
 
@@ -42,35 +43,6 @@ impl Parse for Args {
     }
 }
 
-
-fn make_closure(original: &ItemFn) -> ExprClosure {
-    let body = Box::new(Expr::Block(ExprBlock {
-        attrs: Default::default(),
-        label: Default::default(),
-        block: *original.block.clone(),
-    }));
-
-    ExprClosure {
-        attrs: Default::default(),
-        lifetimes: Default::default(),
-        constness: Default::default(),
-        movability: Default::default(),
-        asyncness: Default::default(),
-        capture: Some(token::Move { span: original.span() }),
-        or1_token: Default::default(),
-        inputs: Default::default(),
-        or2_token: Default::default(),
-        output: ReturnType::Default,
-        body,
-    }
-}
-
-fn replace_function_headers(original: ItemFn, new: &mut ItemFn) {
-    let block = new.block.clone();
-    *new = original;
-    new.block = block;
-}
-
 fn gen_arg_list(sig: &Signature) -> String {
     let mut arg_list = String::new();
     for (i, input) in sig.inputs.iter().enumerate() {
@@ -92,7 +64,72 @@ fn gen_arg_list(sig: &Signature) -> String {
     arg_list
 }
 
-fn generate_function(closure: &ExprClosure, args: Args, fn_name: String, sig: &Signature) -> Result<ItemFn> {
+// The following code reused the `async_trait` probes from tokio-tracing
+//
+// https://github.com/tokio-rs/tracing/blob/6a61897a/tracing-attributes/src/expand.rs
+// Copyright (c) 2019 Tokio Contributors, MIT license
+fn process_async_trait<'a>(block: &'a Block, is_async: bool) -> Option<&'a ExprAsync> {
+
+    fn path_to_string(path: &Path) -> String {
+        use std::fmt::Write;
+        let mut res = String::with_capacity(path.segments.len() * 5);
+        for i in 0..path.segments.len() {
+            write!(res, "{}", path.segments[i].ident).expect("write to string ok");
+            if i < path.segments.len() -1 {
+                res.push_str("::");
+            }
+        }
+        res
+    }
+
+    if is_async {
+        return None;
+    }
+    // last expression of the block (it determines the return value
+    // of the block, so that if we are working on a function whose
+    // `trait` or `impl` declaration is annotated by async_trait,
+    //  this is quite likely the point where the future is pinned)
+    let last_expr = block.stmts.iter().rev().find_map(|stmt| {
+        if let Stmt::Expr(expr, ..) = stmt {
+            Some(expr)
+        } else {
+            None
+        }
+    })?;
+    // is the last expression a function call?
+    let (outside_func, outside_args) = match last_expr {
+        Expr::Call(ExprCall { func, args, .. }) => (func, args),
+        _ => return None,
+    };
+    // is it a call to `Box::pin()`?
+    let path = match outside_func.as_ref() {
+        Expr::Path(path) => &path.path,
+        _ => return None,
+    };
+    if !path_to_string(path).ends_with("Box::pin") {
+        return None;
+    }
+    // Does the call take an argument? If it doesn't,
+    // it's not going to compile anyway, but that's no reason
+    // to (try to) perform an out-of-bounds access
+    if outside_args.is_empty() {
+        return None;
+    }
+    // Is the argument to Box::pin an async block that
+    // captures its arguments?
+    if let Expr::Async(async_expr) = &outside_args[0] {
+         // check that the move 'keyword' is present
+        async_expr.capture?;
+        return Some(async_expr);
+    }
+    unimplemented!("async-trait < 0.1.44 is not supported");
+}
+
+
+fn generate_function(args: Args, block: &Block,
+    async_context: bool, async_keyword: bool,
+    sig: &Signature) -> proc_macro2::TokenStream {
+    let fn_name = sig.ident.to_string();
     let level = args.level.unwrap_or("info".to_string());
     let level = Ident::new(&level, Span::call_site());
     let arg_list = gen_arg_list(sig);
@@ -100,16 +137,63 @@ fn generate_function(closure: &ExprClosure, args: Args, fn_name: String, sig: &S
     let fmt_end = format!(">>> {} return {{__ret_value:?}} >>>", fn_name);
     let begin_expr = quote! {log::#level!(#fmt_begin); };
     let end_expr = quote! {log::#level!(#fmt_end); };
-    let code = quote! {
-        fn temp() {
-            #begin_expr;
-            let __ret_value = (#closure)();
-            #end_expr;
-        }
-    };
 
-    syn::parse2(code)
+    if async_context {
+        let block = quote::quote_spanned!(block.span()=>
+            #begin_expr
+            let __ret_value = async { #block }.await;
+            #end_expr
+            __ret_value
+        );
+        if async_keyword { // normal async fn
+            return block.into();
+        } else { // async_trait
+            return quote::quote_spanned!(block.span()=>
+                async move {
+                    #block
+                }
+            ).into();
+        }
+    } else {
+        return quote::quote_spanned!(block.span()=>
+            #begin_expr
+            let __ret_value = (move ||#block)();
+            #end_expr
+            __ret_value
+        ).into();
+    }
 }
+
+fn output_stream(input: &ItemFn, func_body: proc_macro2::TokenStream) -> proc_macro::TokenStream {
+    let sig = &input.sig;
+    let attrs = &input.attrs;
+    let vis = &input.vis;
+    let Signature {
+        output,
+        inputs,
+        unsafety,
+        constness,
+        abi,
+        ident,
+        asyncness,
+        generics:
+            Generics {
+                params: gen_params,
+                where_clause,
+                ..
+            },
+        ..
+    } = sig;
+    quote::quote_spanned!(input.span()=>
+        #(#attrs) *
+        #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#inputs) #output
+        #where_clause
+        {
+            #func_body
+        }
+    ).into()
+}
+
 
 /// Provide an proc_macro `#[logfn]` which log the function call begin and return,
 /// with argument list and return value.
@@ -213,10 +297,19 @@ pub fn logfn(
 ) -> proc_macro::TokenStream {
     let original_fn: ItemFn = parse_macro_input!(item as ItemFn);
     let args = parse_macro_input!(attr as Args);
-    let fn_name = original_fn.sig.ident.to_string();
-    let closure = make_closure(&original_fn);
-    let mut new_fn =
-        generate_function(&closure, args, fn_name, &original_fn.sig).expect("Failed Generating Function");
-    replace_function_headers(original_fn, &mut new_fn);
-    new_fn.into_token_stream().into()
+//    let closure = make_closure(&original_fn);
+    let is_async = original_fn.sig.asyncness.is_some();
+
+    let body = {
+        if let Some(async_expr) = process_async_trait(&original_fn.block, is_async) {
+            let inst_block = generate_function(args, &async_expr.block, true, false, &original_fn.sig);
+            let async_attrs = &async_expr.attrs;
+            quote::quote_spanned! {async_expr.span()=>
+                Box::pin(#(#async_attrs) * #inst_block)}
+        } else {
+            generate_function(
+                args, &original_fn.block, is_async, is_async, &original_fn.sig)
+        }
+    };
+    output_stream(&original_fn, body)
 }
