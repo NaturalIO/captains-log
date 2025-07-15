@@ -19,8 +19,16 @@ fn setup() {
 
 #[logfn]
 #[rstest(file_size, case(0), case(1))]
-fn test_rstest_foo(setup: (), file_size: usize) {
-    info!("do something111");
+fn test_rstest_case_inline(setup: (), file_size: usize) {
+    info!("do something1111");
+}
+
+#[logfn]
+#[rstest]
+#[case(0)]
+#[case(1)]
+fn test_rstest_case_separate(setup: (), #[case] file_size: usize) {
+    info!("do something1112");
 }
 
 #[logfn]
