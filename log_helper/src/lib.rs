@@ -205,7 +205,7 @@ fn output_stream(input: &ItemFn, func_body: proc_macro2::TokenStream) -> proc_ma
 }
 
 
-/// Provide an proc_macro `#[logfn]` which log the infomation:
+/// Provide an proc_macro `#[logfn]` which log the information:
 ///
 /// - function call begin, argument list
 ///
