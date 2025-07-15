@@ -3,13 +3,18 @@ use crate::{
     formatter::FormatRecord,
 };
 use log::Level;
+use std::path;
+use std::path::{Path, PathBuf};
 
 pub const DEFAULT_TIME: &'static str = "%Y-%m-%d %H:%M:%S%.6f";
 
+/// [{time}][{level}][{file}:{line}] {msg}
 pub const LOG_FORMAT_DEBUG: LogFormat = LogFormat::new(DEFAULT_TIME, debug_format_f);
 
+/// [{time}][{level}] {msg}
 pub const LOG_FORMAT_PROD: LogFormat = LogFormat::new(DEFAULT_TIME, prod_format_f);
 
+/// [{time}][{level}][{file}:{line}] {msg}
 pub fn debug_format_f(r: FormatRecord) -> String {
     let time = r.time();
     let level = r.level();
@@ -19,6 +24,7 @@ pub fn debug_format_f(r: FormatRecord) -> String {
     format!("[{time}][{level}][{file}:{line}] {msg}\n").to_string()
 }
 
+/// [{time}][{level}] {msg}
 pub fn prod_format_f(r: FormatRecord) -> String {
     let time = r.time();
     let level = r.level();
@@ -42,34 +48,34 @@ fn console_logger(target: ConsoleTarget, max_level: Level) -> Builder {
     return config;
 }
 
+/// Output to stdout with LOG_FORMAT_DEBUG, with dynamic=true.
+///
+/// You don't care the speed when output to console.
 #[inline]
 pub fn stdout_logger(max_level: Level) -> Builder {
-    console_logger(ConsoleTarget::Stdout, max_level)
+    console_logger(ConsoleTarget::Stdout, max_level).test()
 }
 
-/// Output to stdout, with dynamic=true for test cases.
-pub fn stdout_test_logger(max_level: Level) -> Builder {
-    stdout_logger(max_level).test()
-}
-
+/// Output to stderr with LOG_FORMAT_DEBUG, with dynamic=true.
+///
+/// You don't care the speed when output to console.
 #[inline]
 pub fn stderr_logger(max_level: Level) -> Builder {
-    console_logger(ConsoleTarget::Stderr, max_level)
-}
-
-/// Output to stderr, with dynamic=true for test cases.
-#[inline]
-pub fn stderr_test_logger(max_level: Level) -> Builder {
-    stderr_logger(max_level).test()
+    console_logger(ConsoleTarget::Stderr, max_level).test()
 }
 
 /// Setup one log file, with custom time_fmt & format_func.
+///
 /// See the source for details.
-pub fn raw_file_logger_custom(
-    dir: &str, name: &str, max_level: Level, time_fmt: &'static str, format_func: FormatFunc,
+pub fn raw_file_logger_custom<P: Into<PathBuf>>(
+    file_path: P, max_level: Level, time_fmt: &'static str, format_func: FormatFunc,
 ) -> Builder {
     let format = LogFormat::new(time_fmt, format_func);
-    let file = LogRawFile::new(dir, &format!("{}.log", name).to_string(), max_level, format);
+    let _file_path = file_path.into();
+    let p = path::absolute(&_file_path).expect("path convert to absolute");
+    let dir = p.parent().unwrap();
+    let file_name = Path::new(p.file_name().unwrap());
+    let file = LogRawFile::new(dir, file_name, max_level, format);
     let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).raw_file(file);
     // panic on debugging
     #[cfg(debug_assertions)]
@@ -85,24 +91,27 @@ pub fn raw_file_logger_custom(
 }
 
 /// Setup one log file.
+///
 /// See the source for details.
-pub fn raw_file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
-    raw_file_logger_custom(dir, name, max_level, DEFAULT_TIME, debug_format_f)
+pub fn raw_file_logger<P: Into<PathBuf>>(file_path: P, max_level: Level) -> Builder {
+    raw_file_logger_custom(file_path, max_level, DEFAULT_TIME, debug_format_f)
 }
 
 /// Setup two log files.
-/// One for debug purpose, with code file line to track problem.
-/// One for error log.
+/// One as "{{name}}.log" for debug purpose, with file line to track problem.
+/// One as "{{name}}.log.wf" for error level log.
 /// See the source for details.
-pub fn split_error_file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
-    let debug_file =
-        LogRawFile::new(dir, &format!("{}.log", name).to_string(), max_level, LOG_FORMAT_DEBUG);
-    let error_file = LogRawFile::new(
-        dir,
-        &format!("{}.log.wf", name).to_string(),
-        Level::Error,
-        LOG_FORMAT_PROD,
-    );
+pub fn split_error_file_logger<P1, P2>(dir: P1, name: P2, max_level: Level) -> Builder
+where
+    P1: Into<PathBuf>,
+    P2: Into<String>,
+{
+    let _name: String = name.into();
+    let debug_file_name = format!("{}.log", _name);
+    let _dir: PathBuf = dir.into();
+    let debug_file = LogRawFile::new(_dir.clone(), debug_file_name, max_level, LOG_FORMAT_DEBUG);
+    let err_file_name = format!("{}.log.wf", _name);
+    let error_file = LogRawFile::new(_dir.clone(), err_file_name, Level::Error, LOG_FORMAT_PROD);
 
     let mut config = Builder::default()
         .signal(signal_hook::consts::SIGUSR1)

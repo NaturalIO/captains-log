@@ -93,7 +93,7 @@ impl log::kv::Source for LogFilter {
 ///     let req_id = r.key("req_id");
 ///     format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
 /// }
-/// let mut builder = recipe::raw_file_logger_custom("/tmp", "log_filter", log::Level::Debug,
+/// let mut builder = recipe::raw_file_logger_custom("/tmp/log_filter.log", log::Level::Debug,
 ///     recipe::DEFAULT_TIME, debug_format_req_id_f);
 /// builder.dynamic = true;
 ///
