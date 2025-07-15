@@ -6,6 +6,10 @@ use log::Level;
 
 pub const DEFAULT_TIME: &'static str = "%Y-%m-%d %H:%M:%S%.6f";
 
+pub const LOG_FORMAT_DEBUG: LogFormat = LogFormat::new(DEFAULT_TIME, debug_format_f);
+
+pub const LOG_FORMAT_PROD: LogFormat = LogFormat::new(DEFAULT_TIME, prod_format_f);
+
 pub fn debug_format_f(r: FormatRecord) -> String {
     let time = r.time();
     let level = r.level();
@@ -15,7 +19,7 @@ pub fn debug_format_f(r: FormatRecord) -> String {
     format!("[{time}][{level}][{file}:{line}] {msg}\n").to_string()
 }
 
-pub fn error_format_f(r: FormatRecord) -> String {
+pub fn prod_format_f(r: FormatRecord) -> String {
     let time = r.time();
     let level = r.level();
     let msg = r.msg();
@@ -23,8 +27,7 @@ pub fn error_format_f(r: FormatRecord) -> String {
 }
 
 fn console_logger(target: ConsoleTarget, max_level: Level) -> Builder {
-    let debug_format = LogFormat::new(DEFAULT_TIME, debug_format_f);
-    let console_config = LogConsole::new(target, max_level, debug_format);
+    let console_config = LogConsole::new(target, max_level, LOG_FORMAT_DEBUG);
     let mut config = Builder::default().console(console_config);
     // panic on debugging
     #[cfg(debug_assertions)]
@@ -63,12 +66,11 @@ pub fn stderr_test_logger(max_level: Level) -> Builder {
 /// Setup one log file, with custom time_fmt & format_func.
 /// See the source for details.
 pub fn raw_file_logger_custom(
-    dir: &str, name: &str, max_level: Level, time_fmt: &str, format_func: FormatFunc,
+    dir: &str, name: &str, max_level: Level, time_fmt: &'static str, format_func: FormatFunc,
 ) -> Builder {
-    let debug_format = LogFormat::new(time_fmt, format_func);
-    let debug_file =
-        LogRawFile::new(dir, &format!("{}.log", name).to_string(), max_level, debug_format);
-    let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).raw_file(debug_file);
+    let format = LogFormat::new(time_fmt, format_func);
+    let file = LogRawFile::new(dir, &format!("{}.log", name).to_string(), max_level, format);
+    let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).raw_file(file);
     // panic on debugging
     #[cfg(debug_assertions)]
     {
@@ -93,13 +95,14 @@ pub fn raw_file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
 /// One for error log.
 /// See the source for details.
 pub fn split_error_file_logger(dir: &str, name: &str, max_level: Level) -> Builder {
-    let debug_format = LogFormat::new(DEFAULT_TIME, debug_format_f);
-
-    let err_format = LogFormat::new(DEFAULT_TIME, error_format_f);
     let debug_file =
-        LogRawFile::new(dir, &format!("{}.log", name).to_string(), max_level, debug_format);
-    let error_file =
-        LogRawFile::new(dir, &format!("{}.log.wf", name).to_string(), Level::Error, err_format);
+        LogRawFile::new(dir, &format!("{}.log", name).to_string(), max_level, LOG_FORMAT_DEBUG);
+    let error_file = LogRawFile::new(
+        dir,
+        &format!("{}.log.wf", name).to_string(),
+        Level::Error,
+        LOG_FORMAT_PROD,
+    );
 
     let mut config = Builder::default()
         .signal(signal_hook::consts::SIGUSR1)

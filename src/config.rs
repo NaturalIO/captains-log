@@ -115,7 +115,7 @@ pub type FormatFunc = fn(FormatRecord) -> String;
 /// Custom formatter which adds into a log sink
 #[derive(Clone, Hash)]
 pub struct LogFormat {
-    time_fmt: String,
+    time_fmt: &'static str,
     format_fn: FormatFunc,
 }
 
@@ -142,13 +142,13 @@ impl LogFormat {
     /// let log_sink = LogRawFile::new("/tmp", "test.log", log::Level::Info, log_format);
     /// ```
 
-    pub fn new(time_fmt: &str, format_fn: FormatFunc) -> Self {
-        Self { time_fmt: time_fmt.to_string(), format_fn }
+    pub const fn new(time_fmt: &'static str, format_fn: FormatFunc) -> Self {
+        Self { time_fmt, format_fn }
     }
 
     #[inline(always)]
     pub(crate) fn process(&self, now: &Timer, record: &Record) -> String {
-        let time = TimeFormatter { now, fmt_str: &self.time_fmt };
+        let time = TimeFormatter { now, fmt_str: self.time_fmt };
         let r = FormatRecord { record, time };
         return (self.format_fn)(r);
     }
