@@ -22,6 +22,8 @@ A light-weight customizable logger implementation for rust
 
 * Log panic message by default.
 
+* Provide additional macros. For example: log_assert!(), logger_assert!() ...
+
 * Supports signal listening for log-rotate. Refer to `Builder::signal()`
 
 * Provides many preset recipes in [recipe] module for convenience.

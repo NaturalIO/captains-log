@@ -14,6 +14,8 @@
 //!
 //! * Log panic message by default.
 //!
+//! * Provide additional [macros](#macros)
+//!
 //! * Supports signal listening for log-rotate. Refer to [Builder::signal()]
 //!
 //! * Provides many preset recipes in [recipe] module for convenience.
