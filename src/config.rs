@@ -158,14 +158,8 @@ impl LogFormat {
 /// For log rotation, you need system log-rotate service to notify with signal.
 #[derive(Hash)]
 pub struct LogRawFile {
-    /// Directory path
-    pub dir: String,
-
     /// max log level in this file
     pub level: Level,
-
-    /// filename
-    pub name: String,
 
     pub format: LogFormat,
 
@@ -174,9 +168,19 @@ pub struct LogRawFile {
 }
 
 impl LogRawFile {
-    pub fn new(dir: &str, name: &str, level: Level, format: LogFormat) -> Self {
-        let file_path = Path::new(dir).join(Path::new(name)).into_boxed_path();
-        Self { dir: dir.to_string(), name: name.to_string(), level, format, file_path }
+    /// Construct config for file sink.
+    /// Will try to create dir if not exists.
+    pub fn new<P1, P2>(dir: P1, file_name: P2, level: Level, format: LogFormat) -> Self
+    where
+        P1: AsRef<Path>,
+        P2: AsRef<Path>,
+    {
+        let dir_path: &Path = dir.as_ref();
+        if !dir_path.exists() {
+            std::fs::create_dir(dir_path).expect("create dir for log");
+        }
+        let file_path = dir_path.join(file_name.as_ref()).into_boxed_path();
+        Self { level, format, file_path }
     }
 }
 
@@ -238,5 +242,24 @@ impl SinkConfigTrait for LogConsole {
 
     fn build(&self) -> LoggerSink {
         LoggerSink::Console(LoggerSinkConsole::new(self))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::recipe;
+
+    #[test]
+    fn test_raw_file() {
+        let _file_sink = LogRawFile::new("/tmp", "test.log", Level::Info, recipe::LOG_FORMAT_DEBUG);
+        let dir_path = Path::new("/tmp/test_dir");
+        if dir_path.is_dir() {
+            std::fs::remove_dir(&dir_path).expect("ok");
+        }
+        let _file_sink =
+            LogRawFile::new(&dir_path, "test.log", Level::Info, recipe::LOG_FORMAT_DEBUG);
+        assert!(dir_path.is_dir());
+        std::fs::remove_dir(&dir_path).expect("ok");
     }
 }
