@@ -6,13 +6,13 @@ use crate::time::Timer;
 
 pub struct TimeFormatter<'a> {
     pub now: &'a Timer,
-    pub fmt_str: &'a String,
+    pub fmt_str: &'a str,
 }
 
 impl<'a> TimeFormatter<'a> {
     #[inline(always)]
     fn time_str(&self) -> String {
-        self.now.format(&self.fmt_str).to_string()
+        self.now.format(self.fmt_str).to_string()
     }
 }
 
