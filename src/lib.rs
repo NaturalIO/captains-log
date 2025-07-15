@@ -16,6 +16,8 @@
 //!
 //! * Supports signal listening for log-rotate. Refer to [Builder::signal()]
 //!
+//! * [Supports Configure by environment](#configure-by-environment)
+//!
 //! * [Fine-grain module-level control](#fine-grain-module-level-control)
 //!
 //! * [API-level log handling](#api-level-log-handling)
@@ -39,15 +41,17 @@
 //! ``` toml
 //! [dependencies]
 //! log = { version = "0.4", features = ["std", "kv_unstable"] }
-//! captains_log = "0.4"
+//! captains_log = "0.5"
 //! ```
 //!
 //! lib.rs or main.rs:
+//!
 //! ``` rust
+//!
+//! // By default, reexport the macros from log crate
 //! #[macro_use]
 //! extern crate captains_log;
-//! #[macro_use]
-//! extern crate log;
+//!
 //! ```
 //!
 //! ## Production example
@@ -98,6 +102,17 @@
 //! config.build();
 //! ```
 //!
+//! ## Configure by environment
+//!
+//! There is a recipe [env_logger()](crate::recipe::env_logger()) to configure a file logger or
+//! console logger from env. As simple as:
+//!
+//! ``` rust
+//! use captains_log::recipe;
+//! let _ = recipe::env_logger("LOG_FILE", "LOG_LEVEL").build();
+//! ```
+//!
+//! If you want to custom more, setup your config with [env_or] helper.
 //!
 //! ## Fine-grain module-level control
 //!
@@ -124,7 +139,6 @@
 //!
 //! ``` rust
 //! use captains_log::*;
-//! use log::*;
 //! fn debug_format_req_id_f(r: FormatRecord) -> String {
 //!     let time = r.time();
 //!     let level = r.level();
@@ -163,8 +177,7 @@
 //!
 //! ```rust
 //!
-//! use log::{debug, info, error, Level};
-//! use captains_log::recipe;
+//! use captains_log::*;
 //!
 //! #[test]
 //! fn test1() {
@@ -194,7 +207,6 @@
 //! ``` rust
 //!
 //! use rstest::*;
-//! use log::*;
 //! use captains_log::*;
 //!
 //! // A show case that setup() fixture will be called twice, before each test.

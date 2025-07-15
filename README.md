@@ -24,6 +24,8 @@ A light-weight customizable logger implementation for rust
 
 * Supports signal listening for log-rotate. Refer to `Builder::signal()`
 
+* Supports configured from environment.
+
 * Fine-grain module-level log control.
 
   Provides `LogFilter` to filter specified logs on-the-fly.
@@ -57,10 +59,10 @@ captains_log = "0.4"
 
 lib.rs or main.rs:
 ```
+
+// By default, reexport the macros from log crate
 #[macro_use]
 extern crate captains_log;
-#[macro_use]
-extern crate log;
 ```
 
 ## Production example
@@ -68,17 +70,13 @@ extern crate log;
 You can refer to various preset recipe in `recipe` module, including console & file output.
 
 ``` rust
-// #[macro_use]
-// extern crate captains_log;
-// #[macro_use]
-// extern crate log;
-
-use log::{debug, info, error};
-use captains_log::recipe::split_error_file_logger;
+#[macro_use]
+extern crate captains_log;
+use captains_log::recipe;
 
 // You'll get /tmp/test.log with all logs, and /tmp/test.log.wf only with error logs.
 
-let mut log_builder = split_error_file_logger("/tmp", "test", log::Level::Debug);
+let mut log_builder = recipe::split_error_file_logger("/tmp", "test", log::Level::Debug);
 // Builder::build() is equivalent of setup_log()
 log_builder.build();
 
@@ -115,6 +113,19 @@ let config = Builder::default()
 
 config.build();
 ```
+
+## Configure by environment
+
+There is a recipe `env_logger()` to configure a file logger or
+console logger from env. As simple as:
+
+``` rust
+use captains_log::recipe;
+let _ = recipe::env_logger("LOG_FILE", "LOG_LEVEL").build();
+```
+
+If you want to custom more, setup your config with `env_or()` helper.
+
 
 ## Fine-grain module-level log control
 
@@ -176,9 +187,7 @@ call <font color=Blue> test() </font> on [Builder],
 which enable dynamic log config and disable signal_hook.
 
 ```rust
-
-use log::{debug, info, error, Level};
-use captains_log::recipe;
+use captains_log::*;
 
 #[test]
 fn test1() {
