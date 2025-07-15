@@ -8,7 +8,8 @@ use crate::{
 };
 use log::{Level, LevelFilter, Record};
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 /// Global config to setup logger
 /// See crate::recipe for usage
@@ -172,14 +173,14 @@ impl LogRawFile {
     /// Will try to create dir if not exists.
     pub fn new<P1, P2>(dir: P1, file_name: P2, level: Level, format: LogFormat) -> Self
     where
-        P1: AsRef<Path>,
-        P2: AsRef<Path>,
+        P1: Into<PathBuf>,
+        P2: Into<PathBuf>,
     {
-        let dir_path: &Path = dir.as_ref();
+        let dir_path: PathBuf = dir.into();
         if !dir_path.exists() {
-            std::fs::create_dir(dir_path).expect("create dir for log");
+            std::fs::create_dir(&dir_path).expect("create dir for log");
         }
-        let file_path = dir_path.join(file_name.as_ref()).into_boxed_path();
+        let file_path = dir_path.join(file_name.into()).into_boxed_path();
         Self { level, format, file_path }
     }
 }
@@ -203,11 +204,29 @@ impl SinkConfigTrait for LogRawFile {
     }
 }
 
-#[derive(Copy, Clone, Debug, Hash)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq)]
 #[repr(u8)]
 pub enum ConsoleTarget {
     Stdout = 1,
     Stderr = 2,
+}
+
+impl FromStr for ConsoleTarget {
+    type Err = ();
+
+    /// accepts case-insensitive: stdout, stderr, out, err, 1, 2
+    fn from_str(s: &str) -> Result<Self, ()> {
+        let v = s.to_lowercase();
+        match v.as_str() {
+            "stdout" => Ok(ConsoleTarget::Stdout),
+            "stderr" => Ok(ConsoleTarget::Stderr),
+            "out" => Ok(ConsoleTarget::Stdout),
+            "err" => Ok(ConsoleTarget::Stderr),
+            "1" => Ok(ConsoleTarget::Stdout),
+            "2" => Ok(ConsoleTarget::Stderr),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Hash)]
@@ -245,6 +264,66 @@ impl SinkConfigTrait for LogConsole {
     }
 }
 
+pub struct EnvVarDefault<'a, T> {
+    name: &'a str,
+    default: T,
+}
+
+/// To config some logger setting with env.
+///
+/// Read value from environment, and set with default if not exists.
+/// NOTE: the arguments to load from env_or() must support owned values.
+pub fn env_or<'a, T>(name: &'a str, default: T) -> EnvVarDefault<'a, T> {
+    EnvVarDefault { name, default }
+}
+
+impl<'a> Into<String> for EnvVarDefault<'a, &'a str> {
+    fn into(self) -> String {
+        if let Ok(v) = std::env::var(&self.name) {
+            return v;
+        }
+        return self.default.to_string();
+    }
+}
+
+impl<'a, P: AsRef<Path>> Into<PathBuf> for EnvVarDefault<'a, P> {
+    fn into(self) -> PathBuf {
+        if let Some(v) = std::env::var_os(&self.name) {
+            if v.len() > 0 {
+                return PathBuf::from(v);
+            }
+        }
+        return self.default.as_ref().to_path_buf();
+    }
+}
+
+macro_rules! impl_from_env {
+    ($type: tt) => {
+        impl<'a> Into<$type> for EnvVarDefault<'a, $type> {
+            #[inline]
+            fn into(self) -> $type {
+                if let Ok(v) = std::env::var(&self.name) {
+                    match $type::from_str(&v) {
+                        Ok(r) => return r,
+                        Err(_) => {
+                            eprintln!(
+                                "env {}={} is not valid, set to {:?}",
+                                self.name, v, self.default
+                            );
+                        }
+                    }
+                }
+                return self.default;
+            }
+        }
+    };
+}
+
+// Tried to impl blanket trait T: FromStr, rust reports conflict with
+// - impl<T, U> Into<U> for T where U: From<T>;
+impl_from_env!(ConsoleTarget);
+impl_from_env!(Level);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -261,5 +340,41 @@ mod tests {
             LogRawFile::new(&dir_path, "test.log", Level::Info, recipe::LOG_FORMAT_DEBUG);
         assert!(dir_path.is_dir());
         std::fs::remove_dir(&dir_path).expect("ok");
+    }
+
+    #[test]
+    fn test_env_config() {
+        // test log level
+        unsafe { std::env::set_var("LEVEL", "warn") };
+        let level: Level = env_or("LEVEL", Level::Debug).into();
+        assert_eq!(level, Level::Warn);
+        unsafe { std::env::set_var("LEVEL", "WARN") };
+        let level: Level = env_or("LEVEL", Level::Debug).into();
+        assert_eq!(level, Level::Warn);
+
+        assert_eq!(ConsoleTarget::from_str("Stdout").unwrap(), ConsoleTarget::Stdout);
+        assert_eq!(ConsoleTarget::from_str("StdERR").unwrap(), ConsoleTarget::Stderr);
+        assert_eq!(ConsoleTarget::from_str("1").unwrap(), ConsoleTarget::Stdout);
+        assert_eq!(ConsoleTarget::from_str("2").unwrap(), ConsoleTarget::Stderr);
+        assert_eq!(ConsoleTarget::from_str("0").unwrap_err(), ());
+
+        // test console target
+        unsafe { std::env::set_var("CONSOLE", "stderr") };
+        let target: ConsoleTarget = env_or("CONSOLE", ConsoleTarget::Stdout).into();
+        assert_eq!(target, ConsoleTarget::Stderr);
+        unsafe { std::env::set_var("CONSOLE", "") };
+        let target: ConsoleTarget = env_or("CONSOLE", ConsoleTarget::Stdout).into();
+        assert_eq!(target, ConsoleTarget::Stdout);
+
+        // test path
+        unsafe { std::env::set_var("LOG_PATH", "/tmp/test.log") };
+        let path: PathBuf = env_or("LOG_PATH", "/tmp/other.log").into();
+        assert_eq!(path, Path::new("/tmp/test.log").to_path_buf());
+
+        unsafe { std::env::set_var("LOG_PATH", "") };
+        let path: PathBuf = env_or("LOG_PATH", "/tmp/other.log").into();
+        assert_eq!(path, Path::new("/tmp/other.log").to_path_buf());
+
+        let _builder = recipe::raw_file_logger(env_or("LOG_PATH", "/tmp/other.log"), Level::Info);
     }
 }
