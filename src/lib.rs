@@ -55,11 +55,12 @@
 //! Refer to [recipe] module for more example.
 //!
 //! ``` rust
-//! use log::{debug, info, error};
-//! use captains_log::recipe::split_error_file_logger;
+//! #[macro_use]
+//! extern crate captains_log;
+//! use captains_log::recipe;
 //!
 //! // You'll get /tmp/test.log with all logs, and /tmp/test.log.wf only with error logs.
-//! let mut log_builder = split_error_file_logger("/tmp", "test", log::Level::Debug);
+//! let mut log_builder = recipe::split_error_file_logger("/tmp", "test", log::Level::Debug);
 //! // Builder::build() is equivalent of setup_log().
 //! log_builder.build();
 //!
@@ -271,6 +272,9 @@ mod log_filter;
 
 pub use self::{config::*, formatter::FormatRecord, log_filter::*, log_impl::setup_log};
 pub use captains_log_helper::logfn;
+
+pub use log::{Level, LevelFilter};
+pub use log::{debug, error, info, trace, warn};
 
 #[cfg(test)]
 mod tests;
