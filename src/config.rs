@@ -169,8 +169,11 @@ pub struct LogRawFile {
 }
 
 impl LogRawFile {
-    /// Construct config for file sink.
-    /// Will try to create dir if not exists.
+    /// Construct config for file sink,
+    /// will try to create dir if not exists.
+    ///
+    /// The type of `dir` and `file_name` can be &str / String / &OsStr / OsString / Path / PathBuf. They can be of
+    /// different types.
     pub fn new<P1, P2>(dir: P1, file_name: P2, level: Level, format: LogFormat) -> Self
     where
         P1: Into<PathBuf>,
@@ -386,5 +389,7 @@ mod tests {
         assert_eq!(path, Path::new("/tmp/other.log").to_path_buf());
 
         let _builder = recipe::raw_file_logger(env_or("LOG_PATH", "/tmp/other.log"), Level::Info);
+        let _builder =
+            recipe::raw_file_logger(env_or("LOG_PATH", "/tmp/other.log".to_string()), Level::Info);
     }
 }

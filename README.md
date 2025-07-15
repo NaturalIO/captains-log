@@ -24,6 +24,8 @@ A light-weight customizable logger implementation for rust
 
 * Supports signal listening for log-rotate. Refer to `Builder::signal()`
 
+* Provides many preset recipes in [recipe] module for convenience.
+
 * Supports configured from environment.
 
 * Fine-grain module-level log control.
@@ -65,9 +67,11 @@ lib.rs or main.rs:
 extern crate captains_log;
 ```
 
-## Production example
+## Fast setup example
 
-You can refer to various preset recipe in `recipe` module, including console & file output.
+You can refer to various preset recipe in `recipe` module.
+
+The following is setup two log files for different log-level:
 
 ``` rust
 #[macro_use]
@@ -87,6 +91,20 @@ info!("Engage");
 // will appear in both /tmp/test.log and /tmp/test.log.wf
 error!("Engine over heat!");
 ```
+
+## Configure by environment
+
+There is a recipe `env_logger()` to configure a file logger or
+console logger from env. As simple as:
+
+``` rust
+use captains_log::recipe;
+let _ = recipe::env_logger("LOG_FILE", "LOG_LEVEL").build();
+```
+
+If you want to custom more, setup your config with `env_or()` helper.
+
+
 
 ## Customize format example
 
@@ -114,23 +132,12 @@ let config = Builder::default()
 config.build();
 ```
 
-## Configure by environment
-
-There is a recipe `env_logger()` to configure a file logger or
-console logger from env. As simple as:
-
-``` rust
-use captains_log::recipe;
-let _ = recipe::env_logger("LOG_FILE", "LOG_LEVEL").build();
-```
-
-If you want to custom more, setup your config with `env_or()` helper.
-
-
 ## Fine-grain module-level log control
 
 Place `LogFilter` in Arc and share among coroutines.
 Log level can be changed on-the-fly.
+
+There're a set of macro "logger_XXX" to work with `LogFilter`.
 
 ``` rust
 use std::sync::Arc;
@@ -148,7 +155,11 @@ logger_error!(logger_req, "Req invalid ...");
 
 ## API-level log handling
 
-Request log can be track by custom key `req_id`, which kept in `LogFilterKV`.
+Request log can be track by customizable key (for example, "req_id"), which kept in [LogFilterKV],
+and `LogFilterKV` is inherit from `LogFilter`.
+
+You need macro "logger_XXX" to work with it.
+
 
 ``` rust
 use captains_log::*;

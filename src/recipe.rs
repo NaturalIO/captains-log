@@ -1,3 +1,6 @@
+//! The recipe module contains some prelude functions that construct a [Builder] for
+//! convenience use. Please click to the description and source for reference.
+
 use crate::{
     config::{Builder, ConsoleTarget, FormatFunc, LogConsole, LogFormat, LogRawFile, env_or},
     formatter::FormatRecord,
@@ -15,7 +18,7 @@ pub const LOG_FORMAT_DEBUG: LogFormat = LogFormat::new(DEFAULT_TIME, debug_forma
 /// [{time}][{level}] {msg}
 pub const LOG_FORMAT_PROD: LogFormat = LogFormat::new(DEFAULT_TIME, prod_format_f);
 
-/// [{time}][{level}][{file}:{line}] {msg}
+/// formatter function: [{time}][{level}][{file}:{line}] {msg}
 pub fn debug_format_f(r: FormatRecord) -> String {
     let time = r.time();
     let level = r.level();
@@ -25,7 +28,7 @@ pub fn debug_format_f(r: FormatRecord) -> String {
     format!("[{time}][{level}][{file}:{line}] {msg}\n").to_string()
 }
 
-/// [{time}][{level}] {msg}
+/// formatter function: [{time}][{level}] {msg}
 pub fn prod_format_f(r: FormatRecord) -> String {
     let time = r.time();
     let level = r.level();
@@ -71,12 +74,20 @@ pub fn stderr_logger(max_level: Level) -> Builder {
 ///
 ///   - file_env_name:
 ///
-///     if valid as stdout/stderr/1/2, output to console target;
-///     otherwise when file_env_name is configured, create a raw_file_logger();
-///     when configured, default output to Stderr.
+///     If valid as stdout/stderr/1/2, output to console target;
+///
+///     When a file path is configured, create a raw_file_logger();
+///
+///     For empty string, default output to Stderr.
 ///
 ///   - level_env_name: configure the log level, default to Info.
 ///
+/// # Example:
+///
+/// ``` rust
+/// use captains_log::recipe;
+/// let _ = recipe::env_logger("LOG_FILE", "LOG_LEVEL").build();
+/// ```
 pub fn env_logger(file_env_name: &str, level_env_name: &str) -> Builder {
     let level: Level = env_or(level_env_name, Level::Info).into();
     let mut console: Option<ConsoleTarget> = None;
@@ -93,6 +104,8 @@ pub fn env_logger(file_env_name: &str, level_env_name: &str) -> Builder {
 /// Setup one log file, with custom time_fmt & format_func.
 ///
 /// See the source for details.
+///
+/// The type of file_path can be &str / String / &OsStr / OsString / Path / PathBuf
 pub fn raw_file_logger_custom<P: Into<PathBuf>>(
     file_path: P, max_level: Level, time_fmt: &'static str, format_func: FormatFunc,
 ) -> Builder {
@@ -119,6 +132,8 @@ pub fn raw_file_logger_custom<P: Into<PathBuf>>(
 /// Setup one log file.
 ///
 /// See the source for details.
+///
+/// The type of file_path can be &str / String / &OsStr / OsString / Path / PathBuf
 pub fn raw_file_logger<P: Into<PathBuf>>(file_path: P, max_level: Level) -> Builder {
     raw_file_logger_custom(file_path, max_level, DEFAULT_TIME, debug_format_f)
 }
@@ -127,6 +142,10 @@ pub fn raw_file_logger<P: Into<PathBuf>>(file_path: P, max_level: Level) -> Buil
 /// One as "{{name}}.log" for debug purpose, with file line to track problem.
 /// One as "{{name}}.log.wf" for error level log.
 /// See the source for details.
+///
+/// The type of `dir` can be &str / String / &OsStr / OsString / Path / PathBuf.
+///
+/// The type of `name` can be &str / String.
 pub fn split_error_file_logger<P1, P2>(dir: P1, name: P2, max_level: Level) -> Builder
 where
     P1: Into<PathBuf>,
