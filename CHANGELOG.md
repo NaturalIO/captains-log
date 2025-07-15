@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.5.0] 2025-07-15
+
+### Added
+
+- Support configure from environment with env_or(), and recipe::env_logger().
+
+### Changed
+
+- Change recipe raw_file_logger() & raw_file_custom_logger(), user need to specified the full path.
+
+- Change the definition of LogRawFile to support path/str/String/env_or().
+
 ## [0.4.7] 2025-07-13
 
 ### Added
