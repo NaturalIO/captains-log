@@ -53,8 +53,7 @@ fn test_logger_filter_kv() {
         format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
     }
     let mut builder = recipe::raw_file_logger_custom(
-        "/tmp",
-        "log_filter",
+        "/tmp/log_filter.log",
         Level::Debug,
         recipe::DEFAULT_TIME,
         debug_format_req_id_f,

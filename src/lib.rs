@@ -133,7 +133,7 @@
 //!     let req_id = r.key("req_id");
 //!     format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
 //! }
-//! let builder = recipe::raw_file_logger_custom("/tmp", "log_filter", log::Level::Debug,
+//! let builder = recipe::raw_file_logger_custom("/tmp/log_filter.log", log::Level::Debug,
 //!     recipe::DEFAULT_TIME, debug_format_req_id_f);
 //! builder.build().expect("setup_log");
 //! let logger = LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
@@ -168,14 +168,14 @@
 //! #[test]
 //! fn test1() {
 //!     recipe::raw_file_logger(
-//!         "/tmp", "test1.log", Level::Debug).test().build();
+//!         "/tmp/test1.log", Level::Debug).test().build();
 //!     info!("doing test1");
 //! }
 //!
 //! #[test]
 //! fn test2() {
 //!     recipe::raw_file_logger(
-//!         "/tmp", "test2.log", Level::Debug).test().build();
+//!         "/tmp/test2.log", Level::Debug).test().build();
 //!     info!("doing test2");
 //! }
 //! ```
@@ -200,7 +200,7 @@
 //! // In order make logs available.
 //! #[fixture]
 //! fn setup() {
-//!     let builder = recipe::raw_file_logger("/tmp", "log_rstest", log::Level::Debug).test();
+//!     let builder = recipe::raw_file_logger("/tmp/log_rstest.log", log::Level::Debug).test();
 //!     builder.build().expect("setup_log");
 //! }
 //!
