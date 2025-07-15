@@ -1,10 +1,11 @@
 use crate::{
-    config::{Builder, ConsoleTarget, FormatFunc, LogConsole, LogFormat, LogRawFile},
+    config::{Builder, ConsoleTarget, FormatFunc, LogConsole, LogFormat, LogRawFile, env_or},
     formatter::FormatRecord,
 };
 use log::Level;
 use std::path;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 pub const DEFAULT_TIME: &'static str = "%Y-%m-%d %H:%M:%S%.6f";
 
@@ -62,6 +63,31 @@ pub fn stdout_logger(max_level: Level) -> Builder {
 #[inline]
 pub fn stderr_logger(max_level: Level) -> Builder {
     console_logger(ConsoleTarget::Stderr, max_level).test()
+}
+
+/// Configure dynamic file/console logger from environment.
+///
+/// # Arguments:
+///
+///   - file_env_name:
+///
+///     if valid as stdout/stderr/1/2, output to console target;
+///     otherwise when file_env_name is configured, create a raw_file_logger();
+///     when configured, default output to Stderr.
+///
+///   - level_env_name: configure the log level, default to Info.
+///
+pub fn env_logger(file_env_name: &str, level_env_name: &str) -> Builder {
+    let level: Level = env_or(level_env_name, Level::Info).into();
+    let mut console: Option<ConsoleTarget> = None;
+    if let Ok(file_path) = std::env::var(file_env_name) {
+        if let Ok(target) = ConsoleTarget::from_str(file_path.as_str()) {
+            console = Some(target);
+        } else if file_path.len() > 0 {
+            return raw_file_logger(file_path, level).test();
+        }
+    }
+    return console_logger(console.unwrap_or(ConsoleTarget::Stderr), level).test();
 }
 
 /// Setup one log file, with custom time_fmt & format_func.

@@ -272,7 +272,17 @@ pub struct EnvVarDefault<'a, T> {
 /// To config some logger setting with env.
 ///
 /// Read value from environment, and set with default if not exists.
+///
 /// NOTE: the arguments to load from env_or() must support owned values.
+///
+/// Example:
+///
+/// ```rust
+/// use captains_log::*;
+/// let _level: log::Level = env_or("LOG_LEVEL", Level::Info).into();
+/// let _file_path: String = env_or("LOG_FILE", "/tmp/test.log").into();
+/// let _console: ConsoleTarget = env_or("LOG_CONSOLE", ConsoleTarget::Stdout).into();
+/// ```
 pub fn env_or<'a, T>(name: &'a str, default: T) -> EnvVarDefault<'a, T> {
     EnvVarDefault { name, default }
 }
