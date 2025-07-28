@@ -1,9 +1,9 @@
 use crate::log_impl::setup_log;
 use crate::{
-    console_impl::LoggerSinkConsole,
-    file_impl::LoggerSinkFile,
+    console_impl::LogSinkConsole,
+    file_impl::LogSinkFile,
     formatter::{FormatRecord, TimeFormatter},
-    log_impl::LoggerSink,
+    log_impl::LogSink,
     time::Timer,
 };
 use log::{Level, LevelFilter, Record};
@@ -108,7 +108,7 @@ pub trait SinkConfigTrait {
     /// Calculate hash for config comparison
     fn write_hash(&self, hasher: &mut Box<dyn Hasher>);
     /// Build an actual sink from config
-    fn build(&self) -> LoggerSink;
+    fn build(&self) -> LogSink;
 }
 
 pub type FormatFunc = fn(FormatRecord) -> String;
@@ -202,8 +202,8 @@ impl SinkConfigTrait for LogRawFile {
         hasher.write(b"LogRawFile");
     }
 
-    fn build(&self) -> LoggerSink {
-        LoggerSink::File(LoggerSinkFile::new(self))
+    fn build(&self) -> LogSink {
+        LogSink::File(LogSinkFile::new(self))
     }
 }
 
@@ -262,8 +262,8 @@ impl SinkConfigTrait for LogConsole {
         hasher.write(b"LogConsole");
     }
 
-    fn build(&self) -> LoggerSink {
-        LoggerSink::Console(LoggerSinkConsole::new(self))
+    fn build(&self) -> LogSink {
+        LogSink::Console(LogSinkConsole::new(self))
     }
 }
 

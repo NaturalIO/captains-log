@@ -1,17 +1,17 @@
 use crate::{
     config::{LogConsole, LogFormat},
-    log_impl::LoggerSinkTrait,
+    log_impl::LogSinkTrait,
     time::Timer,
 };
 use log::{Level, Record};
 
-pub struct LoggerSinkConsole {
+pub struct LogSinkConsole {
     target_fd: libc::c_int,
     max_level: Level,
     formatter: LogFormat,
 }
 
-impl LoggerSinkConsole {
+impl LogSinkConsole {
     pub fn new(config: &LogConsole) -> Self {
         Self {
             target_fd: config.target as i32,
@@ -21,7 +21,7 @@ impl LoggerSinkConsole {
     }
 }
 
-impl LoggerSinkTrait for LoggerSinkConsole {
+impl LogSinkTrait for LogSinkConsole {
     fn reopen(&self) -> std::io::Result<()> {
         Ok(())
     }

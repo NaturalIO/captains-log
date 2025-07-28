@@ -1,6 +1,4 @@
-use crate::{
-    config::Builder, console_impl::LoggerSinkConsole, file_impl::LoggerSinkFile, time::Timer,
-};
+use crate::{config::Builder, console_impl::LogSinkConsole, file_impl::LogSinkFile, time::Timer};
 use arc_swap::ArcSwap;
 use backtrace::Backtrace;
 use lazy_static::lazy_static;
@@ -15,16 +13,16 @@ use std::sync::{
 use std::thread;
 
 #[enum_dispatch]
-pub(crate) trait LoggerSinkTrait {
+pub(crate) trait LogSinkTrait {
     fn reopen(&self) -> std::io::Result<()>;
 
     fn log(&self, now: &Timer, r: &Record);
 }
 
-#[enum_dispatch(LoggerSinkTrait)]
-pub enum LoggerSink {
-    File(LoggerSinkFile),
-    Console(LoggerSinkConsole),
+#[enum_dispatch(LogSinkTrait)]
+pub enum LogSink {
+    File(LogSinkFile),
+    Console(LogSinkConsole),
 }
 
 /// Global static structure to hold the logger
@@ -38,9 +36,9 @@ struct GlobalLogger {
 }
 
 enum LoggerInner {
-    Once(Vec<LoggerSink>),
+    Once(Vec<LogSink>),
     // using ArcSwap has more cost
-    Dyn(ArcSwap<Vec<LoggerSink>>),
+    Dyn(ArcSwap<Vec<LogSink>>),
 }
 
 #[inline(always)]
@@ -57,7 +55,7 @@ fn panic_or_error() {
 
 impl LoggerInner {
     #[allow(dead_code)]
-    fn set(&self, sinks: Vec<LoggerSink>) {
+    fn set(&self, sinks: Vec<LogSink>) {
         match &self {
             Self::Once(_) => {
                 panic_or_error();

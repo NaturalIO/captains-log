@@ -1,6 +1,6 @@
 use crate::{
     config::{LogFormat, LogRawFile},
-    log_impl::LoggerSinkTrait,
+    log_impl::LogSinkTrait,
     time::Timer,
 };
 use log::{Level, Record};
@@ -8,7 +8,7 @@ use std::{fs::OpenOptions, os::unix::prelude::*, path::Path, sync::Arc};
 
 use arc_swap::ArcSwapOption;
 
-pub struct LoggerSinkFile {
+pub struct LogSinkFile {
     max_level: Level,
     path: Box<Path>,
     // raw fd only valid before original File close, use ArcSwap to prevent drop while using.
@@ -16,11 +16,11 @@ pub struct LoggerSinkFile {
     formatter: LogFormat,
 }
 
-fn open_file(path: &Path) -> std::io::Result<std::fs::File> {
+pub(crate) fn open_file(path: &Path) -> std::io::Result<std::fs::File> {
     OpenOptions::new().append(true).create(true).open(path)
 }
 
-impl LoggerSinkFile {
+impl LogSinkFile {
     pub fn new(config: &LogRawFile) -> Self {
         Self {
             path: config.file_path.clone(),
@@ -31,7 +31,7 @@ impl LoggerSinkFile {
     }
 }
 
-impl LoggerSinkTrait for LoggerSinkFile {
+impl LogSinkTrait for LogSinkFile {
     fn reopen(&self) -> std::io::Result<()> {
         match open_file(&self.path) {
             Ok(f) => {
