@@ -1,14 +1,68 @@
 use crate::{
-    config::{LogFormat, LogRawFile},
-    log_impl::LogSinkTrait,
+    config::{LogFormat, SinkConfigTrait},
+    log_impl::{LogSink, LogSinkTrait},
     time::Timer,
 };
 use log::{Level, Record};
-use std::{fs::OpenOptions, os::unix::prelude::*, path::Path, sync::Arc};
+use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
+use std::{fs::OpenOptions, os::unix::prelude::*, sync::Arc};
 
 use arc_swap::ArcSwapOption;
 
-pub struct LogSinkFile {
+/// Config for file sink that supports atomic append from multiprocess.
+/// For log rotation, you need system log-rotate service to notify with signal.
+#[derive(Hash)]
+pub struct LogRawFile {
+    /// max log level in this file
+    pub level: Level,
+
+    pub format: LogFormat,
+
+    /// path: dir/name
+    pub file_path: Box<Path>,
+}
+
+impl LogRawFile {
+    /// Construct config for file sink,
+    /// will try to create dir if not exists.
+    ///
+    /// The type of `dir` and `file_name` can be &str / String / &OsStr / OsString / Path / PathBuf. They can be of
+    /// different types.
+    pub fn new<P1, P2>(dir: P1, file_name: P2, level: Level, format: LogFormat) -> Self
+    where
+        P1: Into<PathBuf>,
+        P2: Into<PathBuf>,
+    {
+        let dir_path: PathBuf = dir.into();
+        if !dir_path.exists() {
+            std::fs::create_dir(&dir_path).expect("create dir for log");
+        }
+        let file_path = dir_path.join(file_name.into()).into_boxed_path();
+        Self { level, format, file_path }
+    }
+}
+
+impl SinkConfigTrait for LogRawFile {
+    fn get_level(&self) -> Level {
+        self.level
+    }
+
+    fn get_file_path(&self) -> Option<Box<Path>> {
+        Some(self.file_path.clone())
+    }
+
+    fn write_hash(&self, hasher: &mut Box<dyn Hasher>) {
+        self.hash(hasher);
+        hasher.write(b"LogRawFile");
+    }
+
+    fn build(&self) -> LogSink {
+        LogSink::File(LogSinkFile::new(self))
+    }
+}
+
+pub(crate) struct LogSinkFile {
     max_level: Level,
     path: Box<Path>,
     // raw fd only valid before original File close, use ArcSwap to prevent drop while using.
@@ -63,5 +117,24 @@ impl LogSinkTrait for LogSinkFile {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::recipe;
+
+    #[test]
+    fn test_raw_file() {
+        let _file_sink = LogRawFile::new("/tmp", "test.log", Level::Info, recipe::LOG_FORMAT_DEBUG);
+        let dir_path = Path::new("/tmp/test_dir");
+        if dir_path.is_dir() {
+            std::fs::remove_dir(&dir_path).expect("ok");
+        }
+        let _file_sink =
+            LogRawFile::new(&dir_path, "test.log", Level::Info, recipe::LOG_FORMAT_DEBUG);
+        assert!(dir_path.is_dir());
+        std::fs::remove_dir(&dir_path).expect("ok");
     }
 }

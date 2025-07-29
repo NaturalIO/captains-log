@@ -1,11 +1,79 @@
 use crate::{
-    config::{LogConsole, LogFormat},
-    log_impl::LogSinkTrait,
+    config::{LogFormat, SinkConfigTrait},
+    env::EnvVarDefault,
+    log_impl::{LogSink, LogSinkTrait},
     time::Timer,
 };
 use log::{Level, Record};
+use std::hash::{Hash, Hasher};
+use std::path::Path;
+use std::str::FromStr;
 
-pub struct LogSinkConsole {
+#[derive(Hash)]
+pub struct LogConsole {
+    pub target: ConsoleTarget,
+
+    /// max log level in this file
+    pub level: Level,
+
+    pub format: LogFormat,
+}
+
+impl LogConsole {
+    pub fn new(target: ConsoleTarget, level: Level, format: LogFormat) -> Self {
+        Self { target, level, format }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Hash, PartialEq)]
+#[repr(u8)]
+pub enum ConsoleTarget {
+    Stdout = 1,
+    Stderr = 2,
+}
+
+impl FromStr for ConsoleTarget {
+    type Err = ();
+
+    /// accepts case-insensitive: stdout, stderr, out, err, 1, 2
+    fn from_str(s: &str) -> Result<Self, ()> {
+        let v = s.to_lowercase();
+        match v.as_str() {
+            "stdout" => Ok(ConsoleTarget::Stdout),
+            "stderr" => Ok(ConsoleTarget::Stderr),
+            "out" => Ok(ConsoleTarget::Stdout),
+            "err" => Ok(ConsoleTarget::Stderr),
+            "1" => Ok(ConsoleTarget::Stdout),
+            "2" => Ok(ConsoleTarget::Stderr),
+            _ => Err(()),
+        }
+    }
+}
+
+// Tried to impl blanket trait T: FromStr, rust reports conflict with
+// - impl<T, U> Into<U> for T where U: From<T>;
+crate::impl_from_env!(ConsoleTarget);
+
+impl SinkConfigTrait for LogConsole {
+    fn get_level(&self) -> Level {
+        self.level
+    }
+
+    fn get_file_path(&self) -> Option<Box<Path>> {
+        None
+    }
+
+    fn write_hash(&self, hasher: &mut Box<dyn Hasher>) {
+        self.hash(hasher);
+        hasher.write(b"LogConsole");
+    }
+
+    fn build(&self) -> LogSink {
+        LogSink::Console(LogSinkConsole::new(self))
+    }
+}
+
+pub(crate) struct LogSinkConsole {
     target_fd: libc::c_int,
     max_level: Level,
     formatter: LogFormat,

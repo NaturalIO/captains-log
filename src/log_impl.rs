@@ -19,7 +19,7 @@ pub(crate) trait LogSinkTrait {
 }
 
 #[enum_dispatch(LogSinkTrait)]
-pub enum LogSink {
+pub(crate) enum LogSink {
     File(LogSinkFile),
     Console(LogSinkConsole),
 }

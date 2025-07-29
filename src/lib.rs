@@ -281,6 +281,7 @@ extern crate enum_dispatch;
 
 mod config;
 mod console_impl;
+mod env;
 mod file_impl;
 mod formatter;
 mod log_impl;
@@ -292,6 +293,9 @@ pub mod recipe;
 
 mod log_filter;
 
+pub use self::console_impl::*;
+pub use self::env::*;
+pub use self::file_impl::*;
 pub use self::{config::*, formatter::FormatRecord, log_filter::*, log_impl::setup_log};
 pub use captains_log_helper::logfn;
 

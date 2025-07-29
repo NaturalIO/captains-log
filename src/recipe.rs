@@ -1,10 +1,7 @@
 //! The recipe module contains some prelude functions that construct a [Builder] for
 //! convenience use. Please click to the description and source for reference.
 
-use crate::{
-    config::{Builder, ConsoleTarget, FormatFunc, LogConsole, LogFormat, LogRawFile, env_or},
-    formatter::FormatRecord,
-};
+use crate::*;
 use log::Level;
 use std::path;
 use std::path::{Path, PathBuf};
