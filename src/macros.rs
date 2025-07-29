@@ -332,7 +332,7 @@ pub(super) use log_assert_eq;
 
 /// log and println to stdout.
 ///
-/// The usage is simular to [core::println!()]
+/// The usage is simular to [std::println!()]
 #[macro_export]
 macro_rules! log_println {
     ($($arg:tt)+) => {
@@ -345,7 +345,7 @@ pub(super) use log_println;
 
 /// log and println to stderr.
 ///
-/// The usage is simular to [core::eprintln!()]
+/// The usage is simular to [std::eprintln!()]
 #[macro_export]
 macro_rules! log_eprintln {
     ($($arg:tt)+) => {
