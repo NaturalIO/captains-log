@@ -2,7 +2,6 @@ use crate::{config::Builder, console_impl::LogSinkConsole, file_impl::LogSinkFil
 use arc_swap::ArcSwap;
 use backtrace::Backtrace;
 use lazy_static::lazy_static;
-use log::*;
 use parking_lot::Mutex;
 use signal_hook::iterator::Signals;
 use std::mem::transmute;
@@ -16,7 +15,7 @@ use std::thread;
 pub(crate) trait LogSinkTrait {
     fn reopen(&self) -> std::io::Result<()>;
 
-    fn log(&self, now: &Timer, r: &Record);
+    fn log(&self, now: &Timer, r: &log::Record);
 }
 
 #[enum_dispatch(LogSinkTrait)]
@@ -120,7 +119,7 @@ impl GlobalLogger {
         }
         self.config_checksum = new_checksum;
 
-        let _ = unsafe { set_logger(transmute::<&Self, &'static Self>(self)) };
+        let _ = unsafe { log::set_logger(transmute::<&Self, &'static Self>(self)) };
 
         // panic hook can be set multiple times
         if builder.continue_when_panic {
@@ -132,14 +131,14 @@ impl GlobalLogger {
     }
 }
 
-impl Log for GlobalLogger {
+impl log::Log for GlobalLogger {
     #[inline(always)]
-    fn enabled(&self, _m: &Metadata) -> bool {
+    fn enabled(&self, _m: &log::Metadata) -> bool {
         true
     }
 
     #[inline(always)]
-    fn log(&self, r: &Record) {
+    fn log(&self, r: &log::Record) {
         let now = Timer::new();
         if let Some(inner) = self.inner.as_ref() {
             match &inner {
@@ -232,7 +231,7 @@ pub fn setup_log(builder: Builder) -> Result<(), ()> {
             Ok(false) => return Err(()),
             Ok(true) => {}
         }
-        set_max_level(builder.get_max_level());
+        log::set_max_level(builder.get_max_level());
     }
     let signals = builder.rotation_signals.clone();
     if signals.len() > 0 {
