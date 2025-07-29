@@ -279,12 +279,14 @@ extern crate signal_hook;
 #[macro_use]
 extern crate enum_dispatch;
 
+mod buf_file_impl;
 mod config;
 mod console_impl;
 mod env;
 mod file_impl;
 mod formatter;
 mod log_impl;
+mod rotation;
 mod time;
 
 pub mod macros;
@@ -293,9 +295,11 @@ pub mod recipe;
 
 mod log_filter;
 
+pub use self::buf_file_impl::*;
 pub use self::console_impl::*;
 pub use self::env::*;
 pub use self::file_impl::*;
+pub use self::rotation::*;
 pub use self::{config::*, formatter::FormatRecord, log_filter::*, log_impl::setup_log};
 pub use captains_log_helper::logfn;
 

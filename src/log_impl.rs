@@ -1,4 +1,5 @@
-use crate::{config::Builder, console_impl::LogSinkConsole, file_impl::LogSinkFile, time::Timer};
+use crate::{buf_file_impl::LogSinkBufFile, console_impl::LogSinkConsole, file_impl::LogSinkFile};
+use crate::{config::Builder, time::Timer};
 use arc_swap::ArcSwap;
 use backtrace::Backtrace;
 use lazy_static::lazy_static;
@@ -21,6 +22,7 @@ pub(crate) trait LogSinkTrait {
 #[enum_dispatch(LogSinkTrait)]
 pub(crate) enum LogSink {
     File(LogSinkFile),
+    BufFile(LogSinkBufFile),
     Console(LogSinkConsole),
 }
 
