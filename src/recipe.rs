@@ -172,3 +172,53 @@ where
     }
     return config;
 }
+
+/// Setup one buffered log file, with custom time_fmt & format_func.
+///
+/// See the source for details.
+///
+/// The type of file_path can be &str / String / &OsStr / OsString / Path / PathBuf
+///
+/// flush_millis: default to 0, means always flush when no more message to write. when larger than
+/// zero, will wait for new message when timeout occur.
+/// the max value is 1000 (1 sec).
+pub fn buffered_file_logger_custom<P: Into<PathBuf>>(
+    file_path: P, max_level: Level, time_fmt: &'static str, format_func: FormatFunc,
+    flush_millis: usize, rotate: Option<Rotation>,
+) -> Builder {
+    let format = LogFormat::new(time_fmt, format_func);
+    let _file_path = file_path.into();
+    let p = path::absolute(&_file_path).expect("path convert to absolute");
+    let dir = p.parent().unwrap();
+    let file_name = Path::new(p.file_name().unwrap());
+    let file = LogBufFile::new(dir, file_name, max_level, format, flush_millis);
+    let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).buf_file(file);
+    // panic on debugging
+    #[cfg(debug_assertions)]
+    {
+        config.continue_when_panic = false;
+    }
+    // do not panic on release
+    #[cfg(not(debug_assertions))]
+    {
+        config.continue_when_panic = true;
+    }
+    return config;
+}
+
+pub fn buffered_file_logger<P: Into<PathBuf>>(file_path: P, max_level: Level) -> Builder {
+    buffered_file_logger_custom(file_path, max_level, DEFAULT_TIME, debug_format_f, 0, None)
+}
+
+pub fn buffered_rotated_file_logger<P: Into<PathBuf>>(
+    file_path: P, max_level: Level, rotation: Rotation,
+) -> Builder {
+    buffered_file_logger_custom(
+        file_path,
+        max_level,
+        DEFAULT_TIME,
+        debug_format_f,
+        0,
+        Some(rotation),
+    )
+}

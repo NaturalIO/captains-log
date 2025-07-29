@@ -1,3 +1,4 @@
+use crate::buf_file_impl::LogBufFile;
 use crate::console_impl::LogConsole;
 use crate::file_impl::LogRawFile;
 use crate::log_impl::setup_log;
@@ -57,6 +58,12 @@ impl Builder {
 
     /// Add raw file sink that supports multiprocess atomic append
     pub fn raw_file(mut self, config: LogRawFile) -> Self {
+        self.sinks.push(Box::new(config));
+        self
+    }
+
+    /// Add buffered file sink which merged I/O and delay flush
+    pub fn buf_file(mut self, config: LogBufFile) -> Self {
         self.sinks.push(Box::new(config));
         self
     }
