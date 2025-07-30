@@ -6,11 +6,13 @@ use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use signal_hook::iterator::Signals;
 use std::mem::transmute;
+use std::path::Path;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
 use std::thread;
+use std::time::Instant;
 
 #[enum_dispatch]
 pub(crate) trait LogSinkTrait {
