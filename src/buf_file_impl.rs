@@ -31,8 +31,12 @@ pub struct LogBufFile {
     /// path: dir/name
     pub file_path: Box<Path>,
 
+    /// default to 0, means always flush when no more message to write.
+    ///
+    /// when larger than zero, will wait for new message when timeout occur.
     pub flush_millis: usize,
 
+    /// Rotation config
     pub rotation: Option<Rotation>,
 }
 
@@ -48,9 +52,12 @@ impl LogBufFile {
     /// The type of `dir` and `file_name` can be &str / String / &OsStr / OsString / Path / PathBuf. They can be of
     /// different types.
     ///
-    /// flush_millis: default to 0, means always flush when no more message to write. when larger than
-    /// zero, will wait for new message when timeout occur.
-    /// the max value is 1000 (1 sec).
+    /// - `flush_millis`:
+    ///
+    ///    - default to 0, means always flush when no more message to write.
+    ///
+    ///    - when larger than zero, will wait for new message when timeout occur.
+    /// The max value is 1000 (1 sec).
     pub fn new<P1, P2>(
         dir: P1, file_name: P2, level: Level, format: LogFormat, flush_millis: usize,
     ) -> Self
