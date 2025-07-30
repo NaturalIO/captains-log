@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.6] 2025-07-30
+
+### Added
+
+- Add Buffered file sink with optional rotation (depends on file-rotate crate)
+
 ## [0.5.2] 2025-07-15
 
 ### Added
