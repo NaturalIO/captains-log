@@ -103,7 +103,7 @@ pub(super) use logger_debug_assert;
 /// use captains_log::*;
 /// let logger = LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
 /// logger_debug_assert_eq!(logger, 1, 1);
-/// logger_debug_assert_eq!(logger, 1, 1, "impossible things happended: {}", "haha");
+/// logger_debug_assert_eq!(logger, 1, 1, "impossible things happened: {}", "haha");
 /// ```
 #[macro_export]
 macro_rules! logger_debug_assert_eq {
@@ -166,7 +166,7 @@ pub(super) use logger_assert;
 /// use captains_log::*;
 /// let logger = LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
 /// logger_assert_eq!(logger, 1, 1);
-/// logger_assert_eq!(logger, 1, 1, "impossible things happended");
+/// logger_assert_eq!(logger, 1, 1, "impossible things happened");
 /// ```
 #[macro_export]
 macro_rules! logger_assert_eq {
@@ -234,7 +234,7 @@ pub(super) use log_debug_assert;
 /// ``` rust
 /// use captains_log::*;
 /// log_debug_assert_eq!(1, 1);
-/// log_debug_assert_eq!(1, 1, "impossible things happended");
+/// log_debug_assert_eq!(1, 1, "impossible things happened");
 /// ```
 #[macro_export]
 macro_rules! log_debug_assert_eq {
@@ -291,7 +291,7 @@ pub(super) use log_assert;
 /// ``` rust
 /// use captains_log::*;
 /// log_assert_eq!(1, 1);
-/// log_assert_eq!(1, 1, "impossible things happended");
+/// log_assert_eq!(1, 1, "impossible things happened");
 /// ```
 #[macro_export]
 macro_rules! log_assert_eq {
@@ -332,7 +332,7 @@ pub(super) use log_assert_eq;
 
 /// log and println to stdout.
 ///
-/// The usage is simular to [std::println!()]
+/// The usage is similar to [std::println!()]
 #[macro_export]
 macro_rules! log_println {
     ($($arg:tt)+) => {
@@ -345,7 +345,7 @@ pub(super) use log_println;
 
 /// log and println to stderr.
 ///
-/// The usage is simular to [std::eprintln!()]
+/// The usage is similar to [std::eprintln!()]
 #[macro_export]
 macro_rules! log_eprintln {
     ($($arg:tt)+) => {

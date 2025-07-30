@@ -26,7 +26,7 @@ pub struct ByAge {
     /// Rotate the file by day / hour.
     pub age_type: Age,
 
-    /// simular to system's log-rotate,
+    /// Similar to system's log-rotate,
     /// For Age::Day, the latest archive use yesterday's timestamp;
     /// For Age::Hour, use last hour's timestamp.
     pub use_last_time: bool,
@@ -310,7 +310,7 @@ impl Backend {
 /// Adaptation to file-rotate crate (Copyright (c) 2020 BourgondAries, MIT license)
 struct _Backend<S: SuffixScheme> {
     archive_dir: PathBuf,
-    base_path: PathBuf, // log patten in archive_dir
+    base_path: PathBuf, // log_path replaced parent with archive_dir
     log_path: PathBuf,  // current log
     compress: Compression,
     suffix_scheme: S,
