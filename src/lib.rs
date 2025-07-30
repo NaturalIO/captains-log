@@ -12,6 +12,8 @@
 //!
 //!     + [Builder::raw_file()] :  Support atomic appending from multi-process on linux
 //!
+//!     + [Builder::buf_file()] :  Write to log file with merged I/O and delay flush, and optional self-rotation.
+//!
 //! * Log panic message by default.
 //!
 //! * Provide additional [macros](#macros)
@@ -45,7 +47,7 @@
 //! ``` toml
 //! [dependencies]
 //! log = { version = "0.4", features = ["std", "kv_unstable"] }
-//! captains_log = "0.5"
+//! captains_log = "0.6"
 //! ```
 //!
 //! lib.rs or main.rs:
@@ -70,16 +72,27 @@
 //! use captains_log::recipe;
 //!
 //! // You'll get /tmp/test.log with all logs, and /tmp/test.log.wf only with error logs.
-//! let mut log_builder = recipe::split_error_file_logger("/tmp", "test", log::Level::Debug);
+//! let log_builder = recipe::split_error_file_logger("/tmp", "test", log::Level::Debug);
 //! // Builder::build() is equivalent of setup_log().
 //! log_builder.build();
-//!
 //! // non-error msg will only appear in /tmp/test.log
 //! debug!("Set a course to Sol system");
 //! info!("Engage");
-//!
 //! // will appear in both /tmp/test.log and /tmp/test.log.wf
 //! error!("Engine over heat!");
+//! ```
+//!
+//! Buffered sink with log rotation (See the definition of [Rotation]):
+//!
+//! ``` rust
+//! #[macro_use]
+//! extern crate captains_log;
+//! use captains_log::*;
+//! // rotate when log file reaches 512M. Keep max 10 archiveed files, with recent 2 not compressed.
+//! // All archived log is moved to "/tmp/rotation/old"
+//! let rotation = Rotation::by_size(
+//!     512 * 1024 * 1024, Some(10)).compress_exclude(2).archive_dir("/tmp/rotation/old");
+//! let _ = recipe::buffered_rotated_file_logger("/tmp/rotation.log", Level::Debug, rotation).build();
 //! ```
 //!
 //! ## Configure by environment
@@ -204,7 +217,7 @@
 //! }
 //! ```
 //!
-//! ## Best practice with tests
+//! ## Best practice with rstest
 //!
 //! We provides proc macro [logfn], the following example shows how to combine with rstest.
 //!

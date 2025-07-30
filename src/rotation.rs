@@ -111,6 +111,10 @@ impl Rotation {
     }
 
     pub(crate) fn build(&self, file_path: &Path) -> LogRotate {
+        assert!(
+            self.by_age.is_some() || self.by_size.is_some(),
+            "by_age and by_size can not be both None"
+        );
         let archive_dir = if let Some(_dir) = &self.archive_dir {
             _dir.clone()
         } else {

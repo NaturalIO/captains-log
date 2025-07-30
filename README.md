@@ -20,6 +20,8 @@ A light-weight customizable logger implementation for rust
 
     + `Builder::raw_file(LogRawFile)`:  Support atomic appending from multi-process on linux
 
+    + `Builder::buf_file()` :  Write to log file with merged I/O and delay flush, and optional self-rotation.
+
 * Log panic message by default.
 
 * Provide additional macros. For example: log_assert!(), logger_assert!() ...
@@ -81,7 +83,6 @@ extern crate captains_log;
 use captains_log::recipe;
 
 // You'll get /tmp/test.log with all logs, and /tmp/test.log.wf only with error logs.
-
 let mut log_builder = recipe::split_error_file_logger("/tmp", "test", log::Level::Debug);
 // Builder::build() is equivalent of setup_log()
 log_builder.build();
@@ -89,9 +90,21 @@ log_builder.build();
 // non-error msg will only appear in /tmp/test.log
 debug!("Set a course to Sol system");
 info!("Engage");
-
 // will appear in both /tmp/test.log and /tmp/test.log.wf
 error!("Engine over heat!");
+```
+
+Buffered sink with log rotation (See the definition of `Rotation`):
+
+``` rust
+#[macro_use]
+extern crate captains_log;
+use captains_log::*;
+// rotate when log file reaches 512M. Keep max 10 archiveed files, with recent 2 not compressed.
+// All archived log is moved to "/tmp/rotation/old"
+let rotation = Rotation::by_size(
+    1024 * 4 * 2, max_files).compress_exclude(2).archive_dir("/tmp/rotation/old");
+let _ = recipe::buffered_rotated_file_logger("/tmp/rotation", Level::Debug, rotation).build();
 ```
 
 ## Configure by environment
@@ -196,7 +209,7 @@ The log will be:
 
 To setup different log config on different tests.
 
-call <font color=Blue> test() </font> on [Builder],
+**Make sure that you call `Builder::test()`** in test cases.
 which enable dynamic log config and disable signal_hook.
 
 ```rust
@@ -217,13 +230,15 @@ fn test2() {
 }
 ```
 
-## Best practice with test suit
+## Best practice with rstest
 
-We provides proc macro #[logfn], nice to combine with rstest.
+We provides proc macro [logfn], the following example shows how to combine with rstest.
 
 * When you have large test suit, you want to know which logs belong to which test case.
 
 * Sometimes your test crashes, you want to find the responsible test case.
+
+* The time spend in each test.
 
 ``` rust
 use rstest::*;
