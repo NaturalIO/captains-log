@@ -69,7 +69,12 @@ pub struct Rotation {
 }
 
 impl Rotation {
-    /// max_files: When None, do not delete old files
+    ///
+    /// Archive log when size is reached.
+    ///
+    /// # Arguments:
+    ///
+    /// - `max_files`: When None, do not delete old files
     pub fn by_size(size_limit: u64, max_files: Option<usize>) -> Self {
         let upkeep =
             if let Some(_max_files) = max_files { Upkeep::Count(_max_files) } else { Upkeep::All };
@@ -83,6 +88,19 @@ impl Rotation {
         }
     }
 
+    /// Rotate log by time (Day/Hour)
+    ///
+    /// # Arguments:
+    ///
+    /// - `use_last_time`: Similar to system's log-rotate,
+    ///
+    ///     - For Age::Day, the latest archive use yesterday's timestamp;
+    ///
+    ///     - For Age::Hour, use last hour's timestamp.
+    ///
+    /// - `time_fmt`: timestamp format of the archived files
+    ///
+    /// - `max_time`: Delete archived logs older than the time
     pub fn by_age(
         age: Age, use_last_time: bool, time_fmt: &'static str, max_time: Option<chrono::TimeDelta>,
     ) -> Self {
@@ -91,6 +109,35 @@ impl Rotation {
         Self {
             by_age: Some(ByAge { age_type: age, use_last_time }),
             by_size: None,
+            time_fmt: Some(time_fmt),
+            upkeep,
+            compress_exclude: None,
+            archive_dir: None,
+        }
+    }
+
+    /// Rotate log when time (Day/Hour) is reached or when size is reached
+    ///
+    /// # Arguments:
+    ///
+    /// - `use_last_time`: Similar to system's log-rotate,
+    ///
+    ///     - For Age::Day, the latest archive use yesterday's timestamp;
+    ///
+    ///     - For Age::Hour, use last hour's timestamp.
+    ///
+    /// - `time_fmt`: timestamp format of the archived files
+    ///
+    /// - `max_time`: Delete archived logs older than the time
+    pub fn by_age_and_size(
+        age: Age, size_limit: u64, use_last_time: bool, time_fmt: &'static str,
+        max_time: Option<chrono::TimeDelta>,
+    ) -> Self {
+        let upkeep =
+            if let Some(_max_time) = max_time { Upkeep::Age(_max_time) } else { Upkeep::All };
+        Self {
+            by_age: Some(ByAge { age_type: age, use_last_time }),
+            by_size: Some(size_limit),
             time_fmt: Some(time_fmt),
             upkeep,
             compress_exclude: None,
