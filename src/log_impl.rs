@@ -19,6 +19,8 @@ pub(crate) trait LogSinkTrait {
     fn reopen(&self) -> std::io::Result<()>;
 
     fn log(&self, now: &Timer, r: &log::Record);
+
+    fn flush(&self);
 }
 
 #[enum_dispatch(LogSinkTrait)]
@@ -161,7 +163,30 @@ impl log::Log for GlobalLogger {
         }
     }
 
-    fn flush(&self) {}
+    /// Can be call manually on program shutdown (If you have a buffered log sink)
+    ///
+    /// # Example
+    ///
+    /// ``` rust
+    /// log::logger().flush();
+    /// ```
+    fn flush(&self) {
+        if let Some(inner) = self.inner.as_ref() {
+            match &inner {
+                LoggerInner::Once(inner) => {
+                    for sink in inner.iter() {
+                        sink.flush();
+                    }
+                }
+                LoggerInner::Dyn(inner) => {
+                    let sinks = inner.load();
+                    for sink in sinks.iter() {
+                        sink.flush();
+                    }
+                }
+            }
+        }
+    }
 }
 
 lazy_static! {
@@ -190,6 +215,7 @@ pub fn log_panic(info: &std::panic::PanicHookInfo) {
 #[inline(always)]
 fn panic_and_exit_hook(info: &std::panic::PanicHookInfo) {
     log_panic(info);
+    log::logger().flush();
     let msg = format!("{}", info).to_string();
     std::panic::resume_unwind(Box::new(msg));
 }
@@ -198,6 +224,7 @@ fn panic_and_exit_hook(info: &std::panic::PanicHookInfo) {
 fn panic_no_exit_hook(info: &std::panic::PanicHookInfo) {
     log_panic(info);
     eprint!("not debug version, so don't exit process");
+    log::logger().flush();
 }
 
 fn signal_listener(signals: Vec<i32>) {

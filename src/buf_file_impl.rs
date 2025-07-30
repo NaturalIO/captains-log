@@ -9,6 +9,7 @@ use std::fs::metadata;
 use std::hash::{Hash, Hasher};
 use std::os::unix::prelude::*;
 use std::path::{Path, PathBuf};
+use std::sync::Once;
 use std::time::{Duration, SystemTime};
 
 use crate::file_impl::open_file;
@@ -91,7 +92,7 @@ pub(crate) struct LogSinkBufFile {
     // raw fd only valid before original File close, use ArcSwap to prevent drop while using.
     formatter: LogFormat,
     th: thread::JoinHandle<()>,
-    tx: MTx<Option<String>>,
+    tx: MTx<Msg>,
 }
 
 impl LogSinkBufFile {
@@ -122,7 +123,7 @@ impl LogSinkBufFile {
 
 impl LogSinkTrait for LogSinkBufFile {
     fn reopen(&self) -> std::io::Result<()> {
-        let _ = self.tx.send(None);
+        let _ = self.tx.send(Msg::Reopen);
         Ok(())
     }
 
@@ -132,9 +133,20 @@ impl LogSinkTrait for LogSinkBufFile {
             // Get a stable buffer,
             // for concurrently write to file from multi process.
             let buf = self.formatter.process(now, r);
-            let _ = self.tx.send(Some(buf));
+            let _ = self.tx.send(Msg::Line(buf));
         }
     }
+
+    #[inline(always)]
+    fn flush(&self) {
+        let _ = self.tx.send(Msg::Flush(Once::new()));
+    }
+}
+
+enum Msg {
+    Line(String),
+    Reopen,
+    Flush(Once),
 }
 
 /// Limit to 4k buf size, so that during reload or graceful restart,
@@ -219,15 +231,22 @@ impl BufFileInner {
         }
     }
 
-    fn log_writer(&mut self, rx: Rx<Option<String>>) {
+    fn log_writer(&mut self, rx: Rx<Msg>) {
         self.reopen();
 
         macro_rules! process {
             ($msg: expr) => {
-                if let Some(line) = $msg {
-                    self.write(line.into());
-                } else {
-                    self.reopen();
+                match $msg {
+                    Msg::Line(line) => {
+                        self.write(line.into());
+                    }
+                    Msg::Reopen => {
+                        self.reopen();
+                    }
+                    Msg::Flush(o) => {
+                        self.flush();
+                        o.call_once(|| {});
+                    }
                 }
             };
         }
