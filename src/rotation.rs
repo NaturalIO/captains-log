@@ -145,7 +145,9 @@ impl Rotation {
         }
     }
 
-    /// Compress archived logs, with a number of recent files left uncompressed
+    /// Compress archived logs, with a number of recent files left uncompressed.
+    ///
+    /// When `un_compress_files` == 0, means all files will be compressed.
     pub fn compress_exclude(mut self, un_compress_files: usize) -> Self {
         self.compress_exclude.replace(un_compress_files);
         self

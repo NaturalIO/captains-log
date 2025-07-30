@@ -85,6 +85,43 @@ fn test_buffered_file_rotation_by_size_compress(#[case] max_files: Option<usize>
 #[case(Some(2))]
 #[case(Some(1))]
 #[case(None)]
+fn test_buffered_file_rotation_by_size_all_compress(#[case] max_files: Option<usize>) {
+    lock_file!();
+    let _ = remove_dir_all(TEST_DIR);
+    let rotation = Rotation::by_size(1024 * 4 * 2, max_files).compress_exclude(0);
+    let base_path = Path::new(TEST_DIR).join("rotation_test.log");
+    recipe::buffered_rotated_file_logger(base_path, Level::Debug, rotation)
+        .test()
+        .build()
+        .expect("setup");
+
+    for _i in 0..1000 {
+        info!("test {}", _i);
+    }
+    logger().flush();
+    // It seams like compress is not finished ?
+    thread::sleep(Duration::from_secs(1));
+    let files = read_files(TEST_DIR);
+    if let Some(_max_files) = max_files {
+        assert_eq!(files.len(), _max_files + 1);
+        let files_len = files.len();
+        if files.len() > 1 {
+            let compressed: Vec<DirEntry> = files
+                .into_iter()
+                .filter(|e| e.file_name().to_string_lossy().ends_with(".gz"))
+                .collect();
+            assert_eq!(compressed.len() + 1, files_len); // + uncompressed + current
+        }
+    } else {
+        assert_eq!(files.len(), 6);
+    }
+}
+
+#[rstest]
+#[case(Some(3))]
+#[case(Some(2))]
+#[case(Some(1))]
+#[case(None)]
 fn test_buffered_file_rotation_by_size_archive_dir(#[case] max_files: Option<usize>) {
     lock_file!();
     let _ = remove_dir_all(TEST_DIR);
