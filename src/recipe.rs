@@ -256,3 +256,10 @@ pub fn buffered_rotated_file_logger<P: Into<PathBuf>>(
         Some(rotation),
     )
 }
+
+#[cfg(feature = "syslog")]
+pub fn syslog_local(max_level: Level) -> Builder {
+    use crate::Facility;
+    let syslog = crate::Syslog::new(Facility::LOG_USER, max_level);
+    return Builder::default().syslog(syslog);
+}

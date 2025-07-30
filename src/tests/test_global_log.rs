@@ -305,3 +305,19 @@ fn test_global_log_debug_assert_eq_with_msg() {
         assert_eq!(debug_logs.len(), 0);
     }
 }
+
+#[cfg(feature = "syslog")]
+#[test]
+fn test_syslog() {
+    let _ = recipe::syslog_local(Level::Debug).test().build().expect("setup");
+    info!("begin syslog test");
+    for _ in 0..60 {
+        trace!("test syslog trace");
+        debug!("test syslog debug");
+        info!("test syslog info");
+        warn!("test syslog warn");
+        error!("test syslog error");
+        println!("sleep");
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+}
