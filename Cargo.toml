@@ -29,6 +29,7 @@ enum_dispatch = "0.3"
 regex = "1"
 crossfire = "2.0"
 file-rotate = "0.8"
+flate2 = "1.0"
 
 [dev-dependencies]
 fmutex = "0"
