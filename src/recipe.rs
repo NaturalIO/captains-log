@@ -102,7 +102,13 @@ pub fn env_logger(file_env_name: &str, level_env_name: &str) -> Builder {
 ///
 /// See the source for details.
 ///
-/// The type of file_path can be &str / String / &OsStr / OsString / Path / PathBuf
+/// # Arguments:
+///
+/// - `file_path`: can be &str / String / &OsStr / OsString / Path / PathBuf
+///
+/// - `time_fmt`: The timestamp format inside the logs.
+///
+/// - `format_func`: function that format the line inside the logs
 pub fn raw_file_logger_custom<P: Into<PathBuf>>(
     file_path: P, max_level: Level, time_fmt: &'static str, format_func: FormatFunc,
 ) -> Builder {
@@ -130,7 +136,9 @@ pub fn raw_file_logger_custom<P: Into<PathBuf>>(
 ///
 /// See the source for details.
 ///
-/// The type of file_path can be &str / String / &OsStr / OsString / Path / PathBuf
+/// # Arguments:
+///
+/// - `file_path`: can be &str / String / &OsStr / OsString / Path / PathBuf
 pub fn raw_file_logger<P: Into<PathBuf>>(file_path: P, max_level: Level) -> Builder {
     raw_file_logger_custom(file_path, max_level, DEFAULT_TIME, debug_format_f)
 }
@@ -138,11 +146,14 @@ pub fn raw_file_logger<P: Into<PathBuf>>(file_path: P, max_level: Level) -> Buil
 /// Setup two log files.
 /// One as "{{name}}.log" for debug purpose, with file line to track problem.
 /// One as "{{name}}.log.wf" for error level log.
+///
 /// See the source for details.
 ///
-/// The type of `dir` can be &str / String / &OsStr / OsString / Path / PathBuf.
+/// # Arguments:
 ///
-/// The type of `name` can be &str / String.
+/// - `dir`: directory of the log files, can be &str / String / &OsStr / OsString / Path / PathBuf.
+///
+/// - `name`: log name, not including the suffix, can be &str / String.
 pub fn split_error_file_logger<P1, P2>(dir: P1, name: P2, max_level: Level) -> Builder
 where
     P1: Into<PathBuf>,
@@ -177,11 +188,15 @@ where
 ///
 /// See the source for details.
 ///
-/// The type of file_path can be &str / String / &OsStr / OsString / Path / PathBuf
+/// - `file_path`: The type of file_path can be &str / String / &OsStr / OsString / Path / PathBuf
 ///
-/// flush_millis: default to 0, means always flush when no more message to write. when larger than
-/// zero, will wait for new message when timeout occur.
-/// the max value is 1000 (1 sec).
+/// - `flush_millis`:
+///
+///     - default to 0, means always flush when no more message to write.
+///
+///     - when larger than zero, will wait for new message when timeout occur.
+///
+///     - the max value is 1000 (1 sec).
 pub fn buffered_file_logger_custom<P: Into<PathBuf>>(
     file_path: P, max_level: Level, time_fmt: &'static str, format_func: FormatFunc,
     flush_millis: usize, rotate: Option<Rotation>,
@@ -209,10 +224,26 @@ pub fn buffered_file_logger_custom<P: Into<PathBuf>>(
     return config;
 }
 
+/// Setup one buffered log file, with flush_millis set to 0
+///
+/// See the source for details.
+///
+/// # Arguments:
+///
+/// - `file_path`: The type of file_path can be &str / String / &OsStr / OsString / Path / PathBuf
 pub fn buffered_file_logger<P: Into<PathBuf>>(file_path: P, max_level: Level) -> Builder {
     buffered_file_logger_custom(file_path, max_level, DEFAULT_TIME, debug_format_f, 0, None)
 }
 
+/// Setup one buffered log file, capable of self rotation, with flush_millis set to 0,
+///
+/// See the source for details.
+///
+/// # Arguments:
+///
+/// - `file_path`: The type of file_path can be &str / String / &OsStr / OsString / Path / PathBuf
+///
+/// - `rotation`: rotation and archive strategy
 pub fn buffered_rotated_file_logger<P: Into<PathBuf>>(
     file_path: P, max_level: Level, rotation: Rotation,
 ) -> Builder {
