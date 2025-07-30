@@ -36,7 +36,7 @@
 //!
 //!     + Provides an attribute macro #\[logfn\] to wrap test function.
 //!
-//!       Refer to [Best practice][#best-practice-with-tests].
+//!       Refer to [Best practice with rstest](#best-practice-with-rstest).
 //!
 //! * Provides a [LogParser](crate::parser::LogParser) to work on your log files.
 //!
@@ -90,8 +90,8 @@
 //! use captains_log::*;
 //! // rotate when log file reaches 512M. Keep max 10 archiveed files, with recent 2 not compressed.
 //! // All archived log is moved to "/tmp/rotation/old"
-//! let rotation = Rotation::by_size(
-//!     512 * 1024 * 1024, Some(10)).compress_exclude(2).archive_dir("/tmp/rotation/old");
+//! let rotation = Rotation::by_size(512 * 1024 * 1024, Some(10))
+//!     .compress_exclude(2).archive_dir("/tmp/rotation/old");
 //! let _ = recipe::buffered_rotated_file_logger("/tmp/rotation.log", Level::Debug, rotation).build();
 //! ```
 //!
@@ -104,6 +104,8 @@
 //! use captains_log::recipe;
 //! let _ = recipe::env_logger("LOG_FILE", "LOG_LEVEL").build();
 //! ```
+//!
+//! If you want to custom more, setup your config with [env_or] helper.
 //!
 //! ## Customize format example
 //!
@@ -129,9 +131,6 @@
 //!     .raw_file(debug_file);
 //! config.build();
 //! ```
-//!
-//!
-//! If you want to custom more, setup your config with [env_or] helper.
 //!
 //! ## Fine-grain module-level control
 //!
@@ -199,7 +198,6 @@
 //! which enable dynamic log config and disable signal_hook.
 //!
 //! ```rust
-//!
 //! use captains_log::*;
 //!
 //! #[test]

@@ -20,7 +20,7 @@ A light-weight customizable logger implementation for rust
 
     + `Builder::raw_file(LogRawFile)`:  Support atomic appending from multi-process on linux
 
-    + `Builder::buf_file()` :  Write to log file with merged I/O and delay flush, and optional self-rotation.
+    + `Builder::buf_file(LogBufFile)` :  Write to log file with merged I/O and delay flush, and optional self-rotation.
 
 * Log panic message by default.
 
@@ -45,11 +45,13 @@ complete request handling procedure from log.
 
 * For test suits usage:
 
-  Allow dynamic reconfigure logger setting in different test function.
+  + Allow dynamic reconfigure logger setting in different test function.
 
-  (NOTE: currently signal_listener does not support reconfigure).
+    Refer to [Unit test example](#unit-test-example).
 
-  Provides an attribute macro #[logfn] to wrap test function. Logging test-start and test-end.
+  + Provides an attribute macro #\[logfn\] to wrap test function.
+
+    Refer to [Best practice with rstest](#best-practice-with-rstest)
 
 * Provides a `parser` to work on your log files.
 
@@ -102,9 +104,9 @@ extern crate captains_log;
 use captains_log::*;
 // rotate when log file reaches 512M. Keep max 10 archiveed files, with recent 2 not compressed.
 // All archived log is moved to "/tmp/rotation/old"
-let rotation = Rotation::by_size(
-    1024 * 4 * 2, max_files).compress_exclude(2).archive_dir("/tmp/rotation/old");
-let _ = recipe::buffered_rotated_file_logger("/tmp/rotation", Level::Debug, rotation).build();
+let rotation = Rotation::by_size(1024 * 4 * 2, max_files)
+        .compress_exclude(2).archive_dir("/tmp/rotation/old");
+let _ = recipe::buffered_rotated_file_logger("/tmp/rotation.log", Level::Debug, rotation).build();
 ```
 
 ## Configure by environment
@@ -118,7 +120,6 @@ let _ = recipe::env_logger("LOG_FILE", "LOG_LEVEL").build();
 ```
 
 If you want to custom more, setup your config with `env_or()` helper.
-
 
 
 ## Customize format example
