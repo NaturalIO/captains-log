@@ -16,6 +16,10 @@ use crate::file_impl::open_file;
 use crossfire::{MTx, RecvTimeoutError, Rx};
 use std::thread;
 
+/// Limit to 4k buf size, so that during reload or graceful restart,
+/// the line will not be break.
+const FLUSH_SIZE: usize = 4096;
+
 /// Config for buffered file sink which merged I/O and delay flush
 #[derive(Hash)]
 pub struct LogBufFile {
@@ -91,7 +95,7 @@ pub(crate) struct LogSinkBufFile {
     max_level: Level,
     // raw fd only valid before original File close, use ArcSwap to prevent drop while using.
     formatter: LogFormat,
-    th: thread::JoinHandle<()>,
+    _th: thread::JoinHandle<()>,
     tx: MTx<Msg>,
 }
 
@@ -116,8 +120,8 @@ impl LogSinkBufFile {
             buf: Vec::with_capacity(4096),
             rotate: rotate_impl,
         };
-        let th = thread::spawn(move || inner.log_writer(rx));
-        Self { max_level: config.level, formatter: config.format.clone(), tx, th }
+        let _th = thread::spawn(move || inner.log_writer(rx));
+        Self { max_level: config.level, formatter: config.format.clone(), tx, _th }
     }
 }
 
@@ -149,10 +153,6 @@ enum Msg {
     Flush(Once),
 }
 
-/// Limit to 4k buf size, so that during reload or graceful restart,
-/// the line will not be break.
-const FLUSH_SIZE: usize = 4096;
-
 struct BufFileInner {
     size: u64,
     create_time: Option<SystemTime>,
@@ -165,11 +165,6 @@ struct BufFileInner {
 
 impl FileSinkTrait for BufFileInner {
     #[inline(always)]
-    fn get_file_path(&self) -> &Path {
-        self.path.as_path()
-    }
-
-    #[inline(always)]
     fn get_create_time(&self) -> SystemTime {
         self.create_time.unwrap()
     }
@@ -181,39 +176,6 @@ impl FileSinkTrait for BufFileInner {
 }
 
 impl BufFileInner {
-    fn write(&mut self, mut s: Vec<u8>) {
-        if self.buf.len() + s.len() > FLUSH_SIZE {
-            if self.buf.len() > 0 {
-                self.flush();
-            }
-        }
-        self.buf.reserve(s.len());
-        self.buf.append(&mut s);
-        if self.buf.len() >= FLUSH_SIZE {
-            self.flush();
-        }
-    }
-
-    fn flush(&mut self) {
-        if let Some(f) = self.f.as_ref() {
-            self.size += self.buf.len() as u64;
-            // Use unbuffered I/O to ensure the write ok
-            let _ = unsafe {
-                libc::write(
-                    f.as_raw_fd() as libc::c_int,
-                    self.buf.as_ptr() as *const libc::c_void,
-                    self.buf.len(),
-                )
-            };
-            unsafe { self.buf.set_len(0) };
-            if let Some(ro) = self.rotate.as_ref() {
-                if ro.rotate(self) {
-                    todo!()
-                }
-            }
-        }
-    }
-
     fn reopen(&mut self) {
         match open_file(&self.path) {
             Ok(f) => {
@@ -231,8 +193,52 @@ impl BufFileInner {
         }
     }
 
+    fn write(&mut self, mut s: Vec<u8>) {
+        if self.buf.len() + s.len() > FLUSH_SIZE {
+            if self.buf.len() > 0 {
+                self.flush(false);
+            }
+        }
+        self.buf.reserve(s.len());
+        self.buf.append(&mut s);
+        if self.buf.len() >= FLUSH_SIZE {
+            self.flush(false);
+        }
+    }
+
+    #[inline(always)]
+    fn check_rotate(&mut self) {
+        if let Some(ro) = self.rotate.as_ref() {
+            if ro.rotate(self) {
+                self.reopen();
+            }
+        }
+    }
+
+    fn flush(&mut self, wait_rotate: bool) {
+        if let Some(f) = self.f.as_ref() {
+            self.size += self.buf.len() as u64;
+            // Use unbuffered I/O to ensure the write ok
+            let _ = unsafe {
+                libc::write(
+                    f.as_raw_fd() as libc::c_int,
+                    self.buf.as_ptr() as *const libc::c_void,
+                    self.buf.len(),
+                )
+            };
+            unsafe { self.buf.set_len(0) };
+            self.check_rotate();
+        }
+        if wait_rotate {
+            if let Some(ro) = self.rotate.as_ref() {
+                ro.wait();
+            }
+        }
+    }
+
     fn log_writer(&mut self, rx: Rx<Msg>) {
         self.reopen();
+        self.check_rotate();
 
         macro_rules! process {
             ($msg: expr) => {
@@ -244,7 +250,7 @@ impl BufFileInner {
                         self.reopen();
                     }
                     Msg::Flush(o) => {
-                        self.flush();
+                        self.flush(true);
                         o.call_once(|| {});
                     }
                 }
@@ -260,10 +266,10 @@ impl BufFileInner {
                         }
                     }
                     Err(RecvTimeoutError::Timeout) => {
-                        self.flush();
+                        self.flush(false);
                     }
                     Err(RecvTimeoutError::Disconnected) => {
-                        self.flush();
+                        self.flush(true);
                         return;
                     }
                 }
@@ -276,10 +282,10 @@ impl BufFileInner {
                         while let Ok(msg) = rx.try_recv() {
                             process!(msg);
                         }
-                        self.flush();
+                        self.flush(false);
                     }
                     Err(_) => {
-                        self.flush();
+                        self.flush(true);
                         return;
                     }
                 }

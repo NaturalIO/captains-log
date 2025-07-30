@@ -191,7 +191,10 @@ pub fn buffered_file_logger_custom<P: Into<PathBuf>>(
     let p = path::absolute(&_file_path).expect("path convert to absolute");
     let dir = p.parent().unwrap();
     let file_name = Path::new(p.file_name().unwrap());
-    let file = LogBufFile::new(dir, file_name, max_level, format, flush_millis);
+    let mut file = LogBufFile::new(dir, file_name, max_level, format, flush_millis);
+    if let Some(ro) = rotate {
+        file = file.rotation(ro);
+    }
     let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).buf_file(file);
     // panic on debugging
     #[cfg(debug_assertions)]
