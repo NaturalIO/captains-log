@@ -15,7 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-## [0.6] 2025-07-30
+## [0.6.1] 2025-07-30
+
+### Added
+
+- Add Rotation::by_age_and_size()
+
+## [0.6.0] 2025-07-30
 
 ### Added
 
