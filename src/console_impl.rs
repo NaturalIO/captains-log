@@ -103,4 +103,7 @@ impl LogSinkTrait for LogSinkConsole {
             }
         }
     }
+
+    #[inline(always)]
+    fn flush(&self) {}
 }

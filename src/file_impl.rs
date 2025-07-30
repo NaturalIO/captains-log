@@ -118,6 +118,9 @@ impl LogSinkTrait for LogSinkFile {
             }
         }
     }
+
+    #[inline(always)]
+    fn flush(&self) {}
 }
 
 #[cfg(test)]
