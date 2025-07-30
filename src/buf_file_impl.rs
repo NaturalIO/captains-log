@@ -5,10 +5,11 @@ use crate::{
     time::Timer,
 };
 use log::{Level, Record};
+use std::fs::metadata;
 use std::hash::{Hash, Hasher};
 use std::os::unix::prelude::*;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use crate::file_impl::open_file;
 use crossfire::{MTx, RecvTimeoutError, Rx};
@@ -85,7 +86,7 @@ impl SinkConfigTrait for LogBufFile {
     }
 }
 
-pub struct LogSinkBufFile {
+pub(crate) struct LogSinkBufFile {
     max_level: Level,
     // raw fd only valid before original File close, use ArcSwap to prevent drop while using.
     formatter: LogFormat,
@@ -97,30 +98,24 @@ impl LogSinkBufFile {
     pub fn new(config: &LogBufFile) -> Self {
         let (tx, rx) = crossfire::mpsc::bounded_blocking(100);
 
-        let mut size = None;
-        let mut age = None;
-        if let Some(rotation) = &config.rotation {
-            if let Some(_age) = &rotation.by_age {
-                age.replace(RotationLimiterAge::new(*_age));
-            }
-            if let Some(_size) = &rotation.by_size {
-                size.replace(RotationLimiterSize::new(*_size));
-            }
-        }
         let mut flush_millis = config.flush_millis;
         if flush_millis == 0 || flush_millis > 1000 {
             flush_millis = 1000;
         }
+        let mut rotate_impl: Option<LogRotate> = None;
+        if let Some(r) = &config.rotation {
+            rotate_impl = Some(r.build(&config.file_path));
+        }
         let mut inner = BufFileInner {
-            path: config.file_path.clone(),
+            size: 0,
+            create_time: None,
+            path: config.file_path.to_path_buf(),
             f: None,
-            rx,
-            size,
-            age,
             flush_millis,
             buf: Vec::with_capacity(4096),
+            rotate: rotate_impl,
         };
-        let th = thread::spawn(move || inner.log_writer());
+        let th = thread::spawn(move || inner.log_writer(rx));
         Self { max_level: config.level, formatter: config.format.clone(), tx, th }
     }
 }
@@ -147,13 +142,30 @@ impl LogSinkTrait for LogSinkBufFile {
 const FLUSH_SIZE: usize = 4096;
 
 struct BufFileInner {
-    path: Box<Path>,
+    size: u64,
+    create_time: Option<SystemTime>,
+    path: PathBuf,
     f: Option<std::fs::File>,
-    rx: Rx<Option<String>>,
-    size: Option<RotationLimiterSize>,
-    age: Option<RotationLimiterAge>,
     buf: Vec<u8>,
     flush_millis: usize,
+    rotate: Option<LogRotate>,
+}
+
+impl FileSinkTrait for BufFileInner {
+    #[inline(always)]
+    fn get_file_path(&self) -> &Path {
+        self.path.as_path()
+    }
+
+    #[inline(always)]
+    fn get_create_time(&self) -> SystemTime {
+        self.create_time.unwrap()
+    }
+
+    #[inline(always)]
+    fn get_size(&self) -> u64 {
+        self.size
+    }
 }
 
 impl BufFileInner {
@@ -172,6 +184,7 @@ impl BufFileInner {
 
     fn flush(&mut self) {
         if let Some(f) = self.f.as_ref() {
+            self.size += self.buf.len() as u64;
             // Use unbuffered I/O to ensure the write ok
             let _ = unsafe {
                 libc::write(
@@ -180,13 +193,24 @@ impl BufFileInner {
                     self.buf.len(),
                 )
             };
+            unsafe { self.buf.set_len(0) };
+            if let Some(ro) = self.rotate.as_ref() {
+                if ro.rotate(self) {
+                    todo!()
+                }
+            }
         }
-        unsafe { self.buf.set_len(0) };
     }
 
     fn reopen(&mut self) {
         match open_file(&self.path) {
             Ok(f) => {
+                let mt = metadata(&self.path).expect("get metadata");
+                self.size = mt.len();
+                if self.create_time.is_none() {
+                    // NOTE Posix has no create_time, so use mtime. rotation will delay a cycle after program restart.
+                    self.create_time = Some(mt.modified().unwrap());
+                }
                 self.f.replace(f);
             }
             Err(e) => {
@@ -195,7 +219,7 @@ impl BufFileInner {
         }
     }
 
-    fn log_writer(&mut self) {
+    fn log_writer(&mut self, rx: Rx<Option<String>>) {
         self.reopen();
 
         macro_rules! process {
@@ -209,10 +233,10 @@ impl BufFileInner {
         }
         if self.flush_millis > 0 {
             loop {
-                match self.rx.recv_timeout(Duration::from_millis(self.flush_millis as u64)) {
+                match rx.recv_timeout(Duration::from_millis(self.flush_millis as u64)) {
                     Ok(msg) => {
                         process!(msg);
-                        while let Ok(msg) = self.rx.try_recv() {
+                        while let Ok(msg) = rx.try_recv() {
                             process!(msg);
                         }
                     }
@@ -227,10 +251,10 @@ impl BufFileInner {
             }
         } else {
             loop {
-                match self.rx.recv() {
+                match rx.recv() {
                     Ok(msg) => {
                         process!(msg);
-                        while let Ok(msg) = self.rx.try_recv() {
+                        while let Ok(msg) = rx.try_recv() {
                             process!(msg);
                         }
                         self.flush();
