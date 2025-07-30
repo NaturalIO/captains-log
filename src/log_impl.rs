@@ -26,6 +26,8 @@ pub(crate) enum LogSink {
     File(LogSinkFile),
     BufFile(LogSinkBufFile),
     Console(LogSinkConsole),
+    #[cfg(feature = "syslog")]
+    Syslog(crate::syslog::LogSinkSyslog),
 }
 
 /// Global static structure to hold the logger

@@ -74,6 +74,13 @@ impl Builder {
         self
     }
 
+    #[cfg(feature = "syslog")]
+    /// Add syslog sink
+    pub fn syslog(mut self, config: crate::Syslog) -> Self {
+        self.sinks.push(Box::new(config));
+        self
+    }
+
     /// Return the max log level in the log sinks
     pub fn get_max_level(&self) -> LevelFilter {
         let mut max_level = Level::Error;

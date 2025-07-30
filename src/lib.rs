@@ -1,3 +1,6 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, allow(unused_attributes))]
+
 //! # captains-log
 //!
 //! A light-weight logger for rust, implementation base on the crate `log`.
@@ -13,6 +16,8 @@
 //!     + [LogRawFile]:  Support atomic appending from multi-process on linux
 //!
 //!     + [LogBufFile]:  Write to log file with merged I/O and delay flush, and optional self-rotation.
+//!
+//!     + [Syslog]: (feature flag `syslog`) Write to local or remote syslog server, with timeout and auto reconnect.
 //!
 //! * Log panic message by default.
 //!
@@ -298,7 +303,13 @@ mod file_impl;
 mod formatter;
 mod log_impl;
 mod rotation;
+#[cfg(feature = "syslog")]
+#[cfg_attr(docsrs, doc(cfg(feature = "syslog")))]
+mod syslog;
 mod time;
+#[cfg(feature = "syslog")]
+#[cfg_attr(docsrs, doc(cfg(feature = "syslog")))]
+pub use self::syslog::*;
 
 pub mod macros;
 pub mod parser;
