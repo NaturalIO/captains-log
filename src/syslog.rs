@@ -44,9 +44,18 @@ pub enum SyslogAddr {
 
 /// Config for syslog output, supports local and remote server.
 ///
+/// The underlayer protocol is implemented by [syslog](https://docs.rs/syslog) crate,
+/// currently Formatter3164 is adapted.
+///
 /// In order to achieve efficient socket I/O, the message is sent to channel,
 /// and asynchronous flushed by backend writer.
-/// The underlayer protocol is implemented by [syslog](https://docs.rs/syslog) crate.
+///
+/// **When your program shutting down, should call flush to ensure the log is written to the socket.**
+///
+/// ``` rust
+/// log::logger().flush();
+/// ```
+/// On panic, our panic hook will call `flush()` explicitly.
 ///
 /// On connection, will output "syslog connected" message to stdout.
 ///
@@ -83,9 +92,9 @@ pub struct Syslog {
     pub level: Level,
     /// When in doubt, use RFC3164
     pub proto: SyslogProto,
-    /// when None, connect local default unix socket.
+    /// When None, connect local default unix socket.
     pub server: Option<SyslogAddr>,
-    /// drop msg when syslog server fail after a timeout
+    /// Drop msg when syslog server fail after a timeout, also apply to tcp connect timeout.
     pub timeout: Duration,
 }
 

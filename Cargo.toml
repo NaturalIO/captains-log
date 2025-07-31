@@ -1,6 +1,6 @@
 [package]
 name = "captains-log"
-version = "0.7.1"
+version = "0.7.2"
 edition = "2018"
 authors = ["plan <frostyplanet@gmail.com>"]
 categories = ["development-tools::debugging"]
@@ -40,3 +40,8 @@ syslog = ["dep:syslog"]
 fmutex = "0"
 rstest = "0"
 tokio = { version="1", features = ["rt-multi-thread", "macros"]}
+
+[package.metadata.docs.rs]
+all-features = true
+# enable features in the documentation
+rustdoc-args = ["--cfg", "docsrs"]

@@ -17,7 +17,7 @@
 //!
 //!     + [LogBufFile]:  Write to log file with merged I/O and delay flush, and optional self-rotation.
 //!
-//!     + [Syslog]: (feature flag `syslog`) Write to local or remote syslog server, with timeout and auto reconnect.
+//!     + [Syslog]: (**feature** `syslog`) Write to local or remote syslog server, with timeout and auto reconnect.
 //!
 //! * Log panic message by default.
 //!
