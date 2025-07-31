@@ -32,18 +32,7 @@ use arc_swap::ArcSwapOption;
 ///     let dir = p.parent().unwrap();
 ///     let file_name = Path::new(p.file_name().unwrap());
 ///     let file = LogRawFile::new(dir, file_name, max_level, format);
-///     let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).raw_file(file);
-///     // panic on debugging
-///     #[cfg(debug_assertions)]
-///     {
-///         config.continue_when_panic = false;
-///     }
-///     // do not panic on release
-///     #[cfg(not(debug_assertions))]
-///     {
-///         config.continue_when_panic = true;
-///     }
-///     return config;
+///     return Builder::default().signal(signal_hook::consts::SIGUSR1).raw_file(file);
 /// }
 /// ```
 #[derive(Hash)]
