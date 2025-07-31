@@ -167,7 +167,7 @@ pub(crate) struct LogSinkBufFile {
 }
 
 impl LogSinkBufFile {
-    pub fn new(config: &LogBufFile) -> Self {
+    fn new(config: &LogBufFile) -> Self {
         let (tx, rx) = crossfire::mpsc::bounded_blocking(100);
 
         let mut flush_millis = config.flush_millis;
