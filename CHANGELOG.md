@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.6.2] 2025-07-31
+
+### Fixed
+
+- Fix config hash for LogBufFile sink
+
+- Make flush time configurable for LogBufFile
+
 ## [0.6.1] 2025-07-30
 
 ### Added
