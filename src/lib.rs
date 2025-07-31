@@ -303,13 +303,21 @@ mod file_impl;
 mod formatter;
 mod log_impl;
 mod rotation;
+mod time;
+
 #[cfg(feature = "syslog")]
 #[cfg_attr(docsrs, doc(cfg(feature = "syslog")))]
 mod syslog;
-mod time;
 #[cfg(feature = "syslog")]
 #[cfg_attr(docsrs, doc(cfg(feature = "syslog")))]
 pub use self::syslog::*;
+
+#[cfg(feature = "ringfile")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ringfile")))]
+mod ring;
+#[cfg(feature = "ringfile")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ringfile")))]
+pub use self::ring::*;
 
 pub mod macros;
 pub mod parser;

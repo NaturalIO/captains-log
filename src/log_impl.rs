@@ -28,6 +28,8 @@ pub enum LogSink {
     Console(LogSinkConsole),
     #[cfg(feature = "syslog")]
     Syslog(crate::syslog::LogSinkSyslog),
+    #[cfg(feature = "ringfile")]
+    RingFile(crate::ring::LogSinkRingFile),
 }
 
 /// Global static structure to hold the logger

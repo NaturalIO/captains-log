@@ -224,3 +224,10 @@ pub fn syslog_local(max_level: Level) -> Builder {
     let syslog = crate::Syslog::new(Facility::LOG_USER, max_level);
     return Builder::default().add_sink(syslog);
 }
+
+#[cfg(feature = "ringfile")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ringfile")))]
+pub fn ring_file<P: Into<PathBuf>>(file_path: P, buf_size: i32, max_level: Level) -> Builder {
+    let ring = crate::LogRingFile::new(file_path, buf_size, max_level, LOG_FORMAT_DEBUG);
+    return Builder::default().signal(signal_hook::consts::SIGHUP).add_sink(ring);
+}
