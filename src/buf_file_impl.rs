@@ -18,9 +18,57 @@ use std::thread;
 
 /// Limit to 4k buf size, so that during reload or graceful restart,
 /// the line will not be break.
-const FLUSH_SIZE: usize = 4096;
+pub const FLUSH_SIZE_DEFAULT: usize = 4096;
 
-/// Config for buffered file sink which merged I/O and delay flush
+/// Config for buffered file sink which merged I/O and delay flush.
+/// Optional log rotation can be configured.
+///
+/// Used when you don't have a SSD and the log is massive.
+///
+/// **When your program shutting down, should call flush to ensure the log is written to disk.**
+///
+/// ``` rust
+/// log::logger().flush();
+/// ```
+/// On panic, our panic hook will call `flush()` explicitly.
+///
+/// flush size default to be 4k to prevent line breaks on program (graceful) restart.
+///
+/// # Example
+///
+/// Source of [crate::recipe::buffered_file_logger_custom()]
+///
+/// ``` rust
+/// use captains_log::*;
+/// use std::path::{self, Path, PathBuf};
+///
+/// pub fn buffered_file_logger_custom<P: Into<PathBuf>>(
+///     file_path: P, max_level: Level, time_fmt: &'static str, format_func: FormatFunc,
+///     flush_millis: usize, rotate: Option<Rotation>,
+/// ) -> Builder {
+///     let format = LogFormat::new(time_fmt, format_func);
+///     let _file_path = file_path.into();
+///     let p = path::absolute(&_file_path).expect("path convert to absolute");
+///     let dir = p.parent().unwrap();
+///     let file_name = Path::new(p.file_name().unwrap());
+///     let mut file = LogBufFile::new(dir, file_name, max_level, format, flush_millis);
+///     if let Some(ro) = rotate {
+///         file = file.rotation(ro);
+///     }
+///     let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).buf_file(file);
+///     // panic on debugging
+///     #[cfg(debug_assertions)]
+///     {
+///         config.continue_when_panic = false;
+///     }
+///     // do not panic on release
+///     #[cfg(not(debug_assertions))]
+///     {
+///         config.continue_when_panic = true;
+///     }
+///     return config;
+/// }
+///```
 #[derive(Hash)]
 pub struct LogBufFile {
     /// max log level in this file
@@ -34,10 +82,15 @@ pub struct LogBufFile {
     /// default to 0, means always flush when no more message to write.
     ///
     /// when larger than zero, will wait for new message when timeout occur.
+    ///
+    /// Max value is 1000 (1 sec).
     pub flush_millis: usize,
 
     /// Rotation config
     pub rotation: Option<Rotation>,
+
+    /// Auto flush when buffer size is reached, default to be 4k
+    pub flush_size: usize,
 }
 
 impl LogBufFile {
@@ -70,7 +123,14 @@ impl LogBufFile {
             std::fs::create_dir(&dir_path).expect("create dir for log");
         }
         let file_path = dir_path.join(file_name.into()).into_boxed_path();
-        Self { level, format, file_path, flush_millis, rotation: None }
+        Self {
+            level,
+            format,
+            file_path,
+            flush_millis,
+            rotation: None,
+            flush_size: FLUSH_SIZE_DEFAULT,
+        }
     }
 
     pub fn rotation(mut self, ro: Rotation) -> Self {
@@ -118,12 +178,17 @@ impl LogSinkBufFile {
         if let Some(r) = &config.rotation {
             rotate_impl = Some(r.build(&config.file_path));
         }
+        let mut flush_size = config.flush_size;
+        if flush_size == 0 {
+            flush_size = FLUSH_SIZE_DEFAULT;
+        }
         let mut inner = BufFileInner {
             size: 0,
             create_time: None,
             path: config.file_path.to_path_buf(),
             f: None,
             flush_millis,
+            flush_size,
             buf: Vec::with_capacity(4096),
             rotate: rotate_impl,
         };
@@ -168,6 +233,7 @@ struct BufFileInner {
     buf: Vec<u8>,
     flush_millis: usize,
     rotate: Option<LogRotate>,
+    flush_size: usize,
 }
 
 impl FileSinkTrait for BufFileInner {
@@ -201,14 +267,14 @@ impl BufFileInner {
     }
 
     fn write(&mut self, mut s: Vec<u8>) {
-        if self.buf.len() + s.len() > FLUSH_SIZE {
+        if self.buf.len() + s.len() > self.flush_size {
             if self.buf.len() > 0 {
                 self.flush(false);
             }
         }
         self.buf.reserve(s.len());
         self.buf.append(&mut s);
-        if self.buf.len() >= FLUSH_SIZE {
+        if self.buf.len() >= self.flush_size {
             self.flush(false);
         }
     }
