@@ -15,6 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.7.0] 2025-07-31
+
+### Added
+
+- Implement syslog feature, supports local and remote server, with timeout and auto reconnect.
+
+### Changed
+
+- Removed all `continue_when_panic` determination in recipe function
+
+### Fixed
+
+- LogBufFile: flush should wait for backend
+
 ## [0.6.2] 2025-07-31
 
 ### Fixed
