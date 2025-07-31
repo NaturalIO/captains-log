@@ -1,16 +1,16 @@
 RUNTESTCASE = _run_test_case() {                                                  \
     case="$(filter-out $@,$(MAKECMDGOALS))";                                      \
     if [ -n "$${case}" ]; then                                                    \
-        RUST_BACKTRACE=full cargo test $${case} -- --nocapture --test-threads=1;  \
+        RUST_BACKTRACE=full cargo test $${case} --all-features -- --nocapture --test-threads=1;  \
     else                                                                          \
-        RUST_BACKTRACE=full cargo test -- --nocapture --test-threads=1;           \
+        RUST_BACKTRACE=full cargo test --all-features -- --nocapture --test-threads=1;           \
     fi  \
 }
 
 RUNBENCHCASE = _run_bench_case() {                                                  \
     case="$(filter-out $@,$(MAKECMDGOALS))";                                      \
     if [ -n "$${case}" ]; then                                                    \
-        RUST_BACKTRACE=full cargo test $${case} --release -- --nocapture --test-threads=1;  \
+        RUST_BACKTRACE=full cargo test --all-features $${case} --release -- --nocapture --test-threads=1;  \
     else                                                                          \
         echo should specify test case;                                            \
     fi  \
@@ -44,7 +44,7 @@ bench:
 
 .PHONY: build
 build: init
-	cargo build
+	cargo build --all-features
 
 .DEFAULT_GOAL = build
 
