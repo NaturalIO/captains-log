@@ -90,7 +90,7 @@ impl SinkConfigTrait for LogBufFile {
 
     fn write_hash(&self, hasher: &mut Box<dyn Hasher>) {
         self.hash(hasher);
-        hasher.write(b"LogRawFile");
+        hasher.write(b"LogBufFile");
     }
 
     fn build(&self) -> LogSink {
