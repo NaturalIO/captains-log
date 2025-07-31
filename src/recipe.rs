@@ -1,5 +1,9 @@
 //! The recipe module contains some prelude functions that construct a [Builder] for
-//! convenience use. Please click to the description and source for reference.
+//! convenience use.
+//!
+//! All Builder object returned by recipe can be modified additionally by user.
+//!
+//! Please click to the description and source for reference.
 
 use crate::*;
 use log::Level;
@@ -35,18 +39,7 @@ pub fn prod_format_f(r: FormatRecord) -> String {
 
 pub fn console_logger(target: ConsoleTarget, max_level: Level) -> Builder {
     let console_config = LogConsole::new(target, max_level, LOG_FORMAT_DEBUG);
-    let mut config = Builder::default().console(console_config);
-    // panic on debugging
-    #[cfg(debug_assertions)]
-    {
-        config.continue_when_panic = false;
-    }
-    // do not panic on release
-    #[cfg(not(debug_assertions))]
-    {
-        config.continue_when_panic = true;
-    }
-    return config;
+    return Builder::default().console(console_config);
 }
 
 /// Output to stdout with LOG_FORMAT_DEBUG, with dynamic=true.
@@ -118,18 +111,7 @@ pub fn raw_file_logger_custom<P: Into<PathBuf>>(
     let dir = p.parent().unwrap();
     let file_name = Path::new(p.file_name().unwrap());
     let file = LogRawFile::new(dir, file_name, max_level, format);
-    let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).raw_file(file);
-    // panic on debugging
-    #[cfg(debug_assertions)]
-    {
-        config.continue_when_panic = false;
-    }
-    // do not panic on release
-    #[cfg(not(debug_assertions))]
-    {
-        config.continue_when_panic = true;
-    }
-    return config;
+    return Builder::default().signal(signal_hook::consts::SIGUSR1).raw_file(file);
 }
 
 /// Setup one log file.
@@ -166,22 +148,10 @@ where
     let err_file_name = format!("{}.log.wf", _name);
     let error_file = LogRawFile::new(_dir.clone(), err_file_name, Level::Error, LOG_FORMAT_PROD);
 
-    let mut config = Builder::default()
+    return Builder::default()
         .signal(signal_hook::consts::SIGUSR1)
         .raw_file(debug_file)
         .raw_file(error_file);
-
-    // panic on debugging
-    #[cfg(debug_assertions)]
-    {
-        config.continue_when_panic = false;
-    }
-    // do not panic on release
-    #[cfg(not(debug_assertions))]
-    {
-        config.continue_when_panic = true;
-    }
-    return config;
 }
 
 /// Setup one buffered log file, with custom time_fmt & format_func.
@@ -210,18 +180,7 @@ pub fn buffered_file_logger_custom<P: Into<PathBuf>>(
     if let Some(ro) = rotate {
         file = file.rotation(ro);
     }
-    let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).buf_file(file);
-    // panic on debugging
-    #[cfg(debug_assertions)]
-    {
-        config.continue_when_panic = false;
-    }
-    // do not panic on release
-    #[cfg(not(debug_assertions))]
-    {
-        config.continue_when_panic = true;
-    }
-    return config;
+    return Builder::default().signal(signal_hook::consts::SIGUSR1).buf_file(file);
 }
 
 /// Setup one buffered log file, with flush_millis set to 0

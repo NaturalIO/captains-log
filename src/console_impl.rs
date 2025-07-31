@@ -20,18 +20,7 @@ use std::str::FromStr;
 ///
 /// pub fn console_logger(target: ConsoleTarget, max_level: Level) -> Builder {
 ///     let console_config = LogConsole::new(target, max_level, recipe::LOG_FORMAT_DEBUG);
-///     let mut config = Builder::default().console(console_config);
-///     // panic on debugging
-///     #[cfg(debug_assertions)]
-///     {
-///         config.continue_when_panic = false;
-///     }
-///     // do not panic on release
-///     #[cfg(not(debug_assertions))]
-///     {
-///         config.continue_when_panic = true;
-///     }
-///     return config;
+///     return Builder::default().console(console_config);
 /// }
 /// ```
 #[derive(Hash)]

@@ -55,18 +55,7 @@ pub const FLUSH_SIZE_DEFAULT: usize = 4096;
 ///     if let Some(ro) = rotate {
 ///         file = file.rotation(ro);
 ///     }
-///     let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).buf_file(file);
-///     // panic on debugging
-///     #[cfg(debug_assertions)]
-///     {
-///         config.continue_when_panic = false;
-///     }
-///     // do not panic on release
-///     #[cfg(not(debug_assertions))]
-///     {
-///         config.continue_when_panic = true;
-///     }
-///     return config;
+///     return Builder::default().signal(signal_hook::consts::SIGUSR1).buf_file(file);
 /// }
 ///```
 #[derive(Hash)]
