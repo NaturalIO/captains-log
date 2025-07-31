@@ -1,4 +1,4 @@
-use crate::{Builder, parser::LogParser};
+use crate::{parser::LogParser, Builder};
 use std::fs::remove_file;
 
 pub const TEST_LOCK_FILE: &str = "/tmp/natualio_test_lock";

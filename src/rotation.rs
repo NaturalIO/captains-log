@@ -1,8 +1,8 @@
-use file_rotate::SuffixInfo;
 use file_rotate::compression::Compression;
 use file_rotate::suffix::{
     AppendCount, AppendTimestamp, DateFrom, FileLimit, Representation, SuffixScheme,
 };
+use file_rotate::SuffixInfo;
 use flate2::write::GzEncoder;
 use parking_lot::Mutex;
 use std::cell::UnsafeCell;

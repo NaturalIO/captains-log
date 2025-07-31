@@ -314,8 +314,8 @@ pub use self::rotation::*;
 pub use self::{config::*, formatter::FormatRecord, log_filter::*, log_impl::setup_log};
 pub use captains_log_helper::logfn;
 
-pub use log::{Level, LevelFilter};
 pub use log::{debug, error, info, trace, warn};
+pub use log::{Level, LevelFilter};
 
 #[cfg(test)]
 mod tests;
