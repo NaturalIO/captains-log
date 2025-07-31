@@ -14,6 +14,8 @@ use std::thread;
 
 #[enum_dispatch]
 pub(crate) trait LogSinkTrait {
+    fn open(&self) -> std::io::Result<()>;
+
     fn reopen(&self) -> std::io::Result<()>;
 
     fn log(&self, now: &Timer, r: &log::Record);
@@ -28,6 +30,8 @@ pub enum LogSink {
     Console(LogSinkConsole),
     #[cfg(feature = "syslog")]
     Syslog(crate::syslog::LogSinkSyslog),
+    #[cfg(feature = "ringfile")]
+    RingFile(crate::ring::LogSinkRingFile),
 }
 
 /// Global static structure to hold the logger
@@ -73,6 +77,26 @@ impl LoggerInner {
 }
 
 impl GlobalLogger {
+    fn open(&mut self) -> std::io::Result<()> {
+        if let Some(inner) = self.inner.as_ref() {
+            match &inner {
+                LoggerInner::Once(inner) => {
+                    for sink in inner.iter() {
+                        sink.open()?;
+                    }
+                }
+                LoggerInner::Dyn(inner) => {
+                    let sinks = inner.load();
+                    for sink in sinks.iter() {
+                        sink.open()?;
+                    }
+                }
+            }
+        }
+        println!("log sinks opened");
+        Ok(())
+    }
+
     pub fn reopen(&mut self) -> std::io::Result<()> {
         if let Some(inner) = self.inner.as_ref() {
             match &inner {
@@ -99,7 +123,7 @@ impl GlobalLogger {
         if self.inner.is_some() {
             if self.config_checksum == new_checksum {
                 // Config is the same, no need to reinit
-                self.reopen()?;
+                self.open()?;
                 return Ok(true);
             }
             if !builder.dynamic {
@@ -110,7 +134,7 @@ impl GlobalLogger {
         let mut sinks = Vec::new();
         for config in &builder.sinks {
             let logger_sink = config.build();
-            logger_sink.reopen()?;
+            logger_sink.open()?;
             sinks.push(logger_sink);
         }
 

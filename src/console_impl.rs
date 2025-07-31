@@ -106,6 +106,10 @@ impl LogSinkConsole {
 }
 
 impl LogSinkTrait for LogSinkConsole {
+    fn open(&self) -> std::io::Result<()> {
+        Ok(())
+    }
+
     fn reopen(&self) -> std::io::Result<()> {
         Ok(())
     }

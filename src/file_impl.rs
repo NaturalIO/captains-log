@@ -111,6 +111,11 @@ impl LogSinkFile {
 }
 
 impl LogSinkTrait for LogSinkFile {
+    #[inline]
+    fn open(&self) -> std::io::Result<()> {
+        self.reopen()
+    }
+
     fn reopen(&self) -> std::io::Result<()> {
         match open_file(&self.path) {
             Ok(f) => {

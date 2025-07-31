@@ -190,6 +190,10 @@ impl LogSinkBufFile {
 }
 
 impl LogSinkTrait for LogSinkBufFile {
+    #[inline]
+    fn open(&self) -> std::io::Result<()> {
+        self.reopen()
+    }
     fn reopen(&self) -> std::io::Result<()> {
         let _ = self.tx.send(Msg::Reopen);
         Ok(())
