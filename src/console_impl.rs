@@ -105,7 +105,7 @@ pub(crate) struct LogSinkConsole {
 }
 
 impl LogSinkConsole {
-    pub fn new(config: &LogConsole) -> Self {
+    fn new(config: &LogConsole) -> Self {
         Self {
             target_fd: config.target as i32,
             max_level: config.level,

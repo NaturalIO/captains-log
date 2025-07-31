@@ -109,7 +109,7 @@ pub(crate) fn open_file(path: &Path) -> std::io::Result<std::fs::File> {
 }
 
 impl LogSinkFile {
-    pub fn new(config: &LogRawFile) -> Self {
+    fn new(config: &LogRawFile) -> Self {
         Self {
             path: config.file_path.clone(),
             max_level: config.level,
