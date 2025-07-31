@@ -2,6 +2,7 @@ use log::Level;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+#[doc(hidden)]
 #[macro_export(local_inner_macros)]
 macro_rules! impl_from_env {
     ($type: tt) => {

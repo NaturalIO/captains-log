@@ -18,7 +18,7 @@ use std::thread;
 
 /// Limit to 4k buf size, so that during reload or graceful restart,
 /// the line will not be break.
-pub const FLUSH_SIZE_DEFAULT: usize = 4096;
+const FLUSH_SIZE_DEFAULT: usize = 4096;
 
 /// Config for buffered file sink which merged I/O and delay flush.
 /// Optional log rotation can be configured.
@@ -78,7 +78,8 @@ pub struct LogBufFile {
     /// Rotation config
     pub rotation: Option<Rotation>,
 
-    /// Auto flush when buffer size is reached, default to be 4k
+    /// Auto flush when buffer size is reached, **default to be 4KB**,
+    /// so that during reload or graceful restart, the line will not be break.
     pub flush_size: usize,
 }
 
