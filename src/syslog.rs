@@ -235,6 +235,10 @@ impl LogSinkSyslog {
 }
 
 impl LogSinkTrait for LogSinkSyslog {
+    fn open(&self) -> std::io::Result<()> {
+        Ok(())
+    }
+
     fn reopen(&self) -> std::io::Result<()> {
         Ok(())
     }

@@ -17,7 +17,14 @@
 //!
 //!     + [LogBufFile]:  Write to log file with merged I/O and delay flush, and optional self-rotation.
 //!
-//!     + [Syslog]: (**feature** `syslog`) Write to local or remote syslog server, with timeout and auto reconnect.
+//!     + [Syslog]: (**feature** `syslog`)
+//!
+//!         Write to local or remote syslog server, with timeout and auto reconnect.
+//!
+//!     + [LogRingFile]: (**feature** `ringfile`)
+//!
+//!         For deadlock / race condition debugging,
+//!         collect log to ring buffer in memory. See the doc of [LogRingFile] for how to use.
 //!
 //! * Log panic message by default.
 //!
@@ -303,13 +310,21 @@ mod file_impl;
 mod formatter;
 mod log_impl;
 mod rotation;
+mod time;
+
 #[cfg(feature = "syslog")]
 #[cfg_attr(docsrs, doc(cfg(feature = "syslog")))]
 mod syslog;
-mod time;
 #[cfg(feature = "syslog")]
 #[cfg_attr(docsrs, doc(cfg(feature = "syslog")))]
 pub use self::syslog::*;
+
+#[cfg(feature = "ringfile")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ringfile")))]
+mod ring;
+#[cfg(feature = "ringfile")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ringfile")))]
+pub use self::ring::*;
 
 pub mod macros;
 pub mod parser;
@@ -325,8 +340,14 @@ pub use self::rotation::*;
 pub use self::{config::*, formatter::FormatRecord, log_filter::*, log_impl::setup_log};
 pub use captains_log_helper::logfn;
 
+/// Re-export log::Level:
+pub use log::Level;
+/// Re-export log::LevelFilter:
+pub use log::LevelFilter;
 pub use log::{debug, error, info, trace, warn};
-pub use log::{Level, LevelFilter};
+
+/// Re-export from signal_hook::consts:
+pub use signal_hook::consts::signal as signal_consts;
 
 #[cfg(test)]
 mod tests;
