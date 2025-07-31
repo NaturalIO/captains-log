@@ -9,7 +9,7 @@ use std::fs::metadata;
 use std::hash::{Hash, Hasher};
 use std::os::unix::prelude::*;
 use std::path::{Path, PathBuf};
-use std::sync::Once;
+use std::sync::{Arc, Once};
 use std::time::{Duration, SystemTime};
 
 use crate::file_impl::open_file;
@@ -204,14 +204,17 @@ impl LogSinkTrait for LogSinkBufFile {
 
     #[inline(always)]
     fn flush(&self) {
-        let _ = self.tx.send(Msg::Flush(Once::new()));
+        let o = Arc::new(Once::new());
+        if self.tx.send(Msg::Flush(o.clone())).is_ok() {
+            o.wait();
+        }
     }
 }
 
 enum Msg {
     Line(String),
     Reopen,
-    Flush(Once),
+    Flush(Arc<Once>),
 }
 
 struct BufFileInner {

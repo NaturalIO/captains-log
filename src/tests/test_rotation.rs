@@ -4,8 +4,6 @@ use log::*;
 use rstest::*;
 use std::fs::*;
 use std::path::Path;
-use std::thread;
-use std::time::Duration;
 
 const TEST_DIR: &'static str = "/tmp/captains_log/";
 
@@ -34,7 +32,6 @@ fn test_buffered_file_rotation_by_size(#[case] max_files: Option<usize>) {
         info!("test {}", _i);
     }
     logger().flush();
-    thread::sleep(Duration::from_secs(1));
     let files = read_files(TEST_DIR);
     if let Some(_max_files) = max_files {
         assert_eq!(files.len(), _max_files + 1);
@@ -62,8 +59,6 @@ fn test_buffered_file_rotation_by_size_compress(#[case] max_files: Option<usize>
         info!("test {}", _i);
     }
     logger().flush();
-    // It seams like compress is not finished ?
-    thread::sleep(Duration::from_secs(1));
     let files = read_files(TEST_DIR);
     if let Some(_max_files) = max_files {
         assert_eq!(files.len(), _max_files + 1);
@@ -99,8 +94,6 @@ fn test_buffered_file_rotation_by_size_all_compress(#[case] max_files: Option<us
         info!("test {}", _i);
     }
     logger().flush();
-    // It seams like compress is not finished ?
-    thread::sleep(Duration::from_secs(1));
     let files = read_files(TEST_DIR);
     if let Some(_max_files) = max_files {
         assert_eq!(files.len(), _max_files + 1);
@@ -136,7 +129,6 @@ fn test_buffered_file_rotation_by_size_archive_dir(#[case] max_files: Option<usi
         info!("test {}", _i);
     }
     logger().flush();
-    thread::sleep(Duration::from_secs(1));
     let files = read_files(TEST_DIR);
     assert_eq!(files.len(), 2);
     let files = read_files(TEST_DIR_OLD);
@@ -167,7 +159,6 @@ fn test_buffered_file_rotation_by_size_archive_dir_compress(#[case] max_files: O
         info!("test {}", _i);
     }
     logger().flush();
-    thread::sleep(Duration::from_secs(1));
     let files = read_files(TEST_DIR);
     assert_eq!(files.len(), 2);
     let files = read_files(TEST_DIR_OLD);
