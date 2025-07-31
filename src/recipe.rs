@@ -33,7 +33,7 @@ pub fn prod_format_f(r: FormatRecord) -> String {
     format!("[{time}][{level}] {msg}\n").to_string()
 }
 
-fn console_logger(target: ConsoleTarget, max_level: Level) -> Builder {
+pub fn console_logger(target: ConsoleTarget, max_level: Level) -> Builder {
     let console_config = LogConsole::new(target, max_level, LOG_FORMAT_DEBUG);
     let mut config = Builder::default().console(console_config);
     // panic on debugging

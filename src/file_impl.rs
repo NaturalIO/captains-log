@@ -11,7 +11,41 @@ use std::{fs::OpenOptions, os::unix::prelude::*, sync::Arc};
 use arc_swap::ArcSwapOption;
 
 /// Config for file sink that supports atomic append from multiprocess.
+///
+/// Used when you want a reliable log regardless of crash or killed.
 /// For log rotation, you need system log-rotate service to notify with signal.
+///
+/// # Example
+///
+/// Source of [crate::recipe::raw_file_logger_custom()]
+///
+/// ``` rust
+/// use captains_log::*;
+/// use std::path::{self, Path, PathBuf};
+///
+/// pub fn raw_file_logger_custom<P: Into<PathBuf>>(
+///     file_path: P, max_level: Level, time_fmt: &'static str, format_func: FormatFunc,
+/// ) -> Builder {
+///     let format = LogFormat::new(time_fmt, format_func);
+///     let _file_path = file_path.into();
+///     let p = path::absolute(&_file_path).expect("path convert to absolute");
+///     let dir = p.parent().unwrap();
+///     let file_name = Path::new(p.file_name().unwrap());
+///     let file = LogRawFile::new(dir, file_name, max_level, format);
+///     let mut config = Builder::default().signal(signal_hook::consts::SIGUSR1).raw_file(file);
+///     // panic on debugging
+///     #[cfg(debug_assertions)]
+///     {
+///         config.continue_when_panic = false;
+///     }
+///     // do not panic on release
+///     #[cfg(not(debug_assertions))]
+///     {
+///         config.continue_when_panic = true;
+///     }
+///     return config;
+/// }
+/// ```
 #[derive(Hash)]
 pub struct LogRawFile {
     /// max log level in this file

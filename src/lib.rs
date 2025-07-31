@@ -8,15 +8,15 @@
 //!
 //! * Supports multiple types of sink stacking, each with its own log level.
 //!
-//!     + [Builder::console()] :   Console output to stdout/stderr.
+//!     + [LogConsole]:  Console output to stdout/stderr.
 //!
-//!     + [Builder::raw_file()] :  Support atomic appending from multi-process on linux
+//!     + [LogRawFile]:  Support atomic appending from multi-process on linux
 //!
-//!     + [Builder::buf_file()] :  Write to log file with merged I/O and delay flush, and optional self-rotation.
+//!     + [LogBufFile]:  Write to log file with merged I/O and delay flush, and optional self-rotation.
 //!
 //! * Log panic message by default.
 //!
-//! * Provide additional [macros](#macros)
+//! * Provide additional [macros](#macros), for example: log_assert!(), logger_assert!() ..
 //!
 //! * Supports signal listening for log-rotate. Refer to [Builder::signal()]
 //!

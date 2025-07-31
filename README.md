@@ -2,8 +2,8 @@
 
 A light-weight customizable logger implementation for rust
 
-[![crates.io][cratesio-image]][cratesio]
-[![docs.rs][docsrs-image]][docsrs]
+crates.io: [![crates.io][cratesio-image]][cratesio]
+docs.rs: [![docs.rs][docsrs-image]][docsrs]
 
 [cratesio-image]: https://img.shields.io/crates/v/captains-log.svg
 [cratesio]: https://crates.io/crates/captains-log
@@ -16,11 +16,11 @@ A light-weight customizable logger implementation for rust
 
 * Supports multiple types of sink stacking, each with its own log level.
 
-    + `Builder::console(LogConsole)`:   Console output to stdout/stderr.
+    + `LogConsole`:   Console output to stdout/stderr.
 
-    + `Builder::raw_file(LogRawFile)`:  Support atomic appending from multi-process on linux
+    + `LogRawFile`:  Support atomic appending from multi-process on linux
 
-    + `Builder::buf_file(LogBufFile)` :  Write to log file with merged I/O and delay flush, and optional self-rotation.
+    + `LogBufFile` :  Write to log file with merged I/O and delay flush, and optional self-rotation.
 
 * Log panic message by default.
 

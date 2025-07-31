@@ -9,6 +9,31 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::str::FromStr;
 
+/// Log config for output to console
+///
+/// # Example
+///
+/// source of [crate::recipe::console_logger()]
+///
+/// ``` rust
+/// use captains_log::*;
+///
+/// pub fn console_logger(target: ConsoleTarget, max_level: Level) -> Builder {
+///     let console_config = LogConsole::new(target, max_level, recipe::LOG_FORMAT_DEBUG);
+///     let mut config = Builder::default().console(console_config);
+///     // panic on debugging
+///     #[cfg(debug_assertions)]
+///     {
+///         config.continue_when_panic = false;
+///     }
+///     // do not panic on release
+///     #[cfg(not(debug_assertions))]
+///     {
+///         config.continue_when_panic = true;
+///     }
+///     return config;
+/// }
+/// ```
 #[derive(Hash)]
 pub struct LogConsole {
     pub target: ConsoleTarget,
