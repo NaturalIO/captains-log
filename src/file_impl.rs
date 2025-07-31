@@ -1,5 +1,5 @@
 use crate::{
-    config::{LogFormat, SinkConfigTrait},
+    config::{LogFormat, SinkConfigBuild, SinkConfigTrait},
     log_impl::{LogSink, LogSinkTrait},
     time::Timer,
 };
@@ -32,7 +32,7 @@ use arc_swap::ArcSwapOption;
 ///     let dir = p.parent().unwrap();
 ///     let file_name = Path::new(p.file_name().unwrap());
 ///     let file = LogRawFile::new(dir, file_name, max_level, format);
-///     return Builder::default().signal(signal_hook::consts::SIGUSR1).raw_file(file);
+///     return Builder::default().signal(signal_hook::consts::SIGUSR1).add_sink(file);
 /// }
 /// ```
 #[derive(Hash)]
@@ -66,6 +66,12 @@ impl LogRawFile {
     }
 }
 
+impl SinkConfigBuild for LogRawFile {
+    fn build(&self) -> LogSink {
+        LogSink::File(LogSinkFile::new(self))
+    }
+}
+
 impl SinkConfigTrait for LogRawFile {
     fn get_level(&self) -> Level {
         self.level
@@ -78,10 +84,6 @@ impl SinkConfigTrait for LogRawFile {
     fn write_hash(&self, hasher: &mut Box<dyn Hasher>) {
         self.hash(hasher);
         hasher.write(b"LogRawFile");
-    }
-
-    fn build(&self) -> LogSink {
-        LogSink::File(LogSinkFile::new(self))
     }
 }
 

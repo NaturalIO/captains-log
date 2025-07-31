@@ -1,5 +1,5 @@
 use crate::{
-    config::SinkConfigTrait,
+    config::{SinkConfigBuild, SinkConfigTrait},
     log_impl::{LogSink, LogSinkTrait},
     time::Timer,
 };
@@ -71,7 +71,7 @@ pub enum SyslogAddr {
 /// use captains_log::*;
 /// pub fn syslog_local(max_level: Level) -> Builder {
 ///     let syslog = Syslog::new(Facility::LOG_USER, max_level);
-///     return Builder::default().syslog(syslog);
+///     return Builder::default().add_sink(syslog);
 /// }
 /// ```
 /// # Example connecting remote server
@@ -79,7 +79,7 @@ pub enum SyslogAddr {
 /// ``` rust
 /// use captains_log::*;
 /// let syslog = Syslog::new(Facility::LOG_USER, Level::Info).tcp("10.10.0.1:601");
-/// let _ = Builder::default().syslog(syslog).build();
+/// let _ = Builder::default().add_sink(syslog).build();
 /// ```
 pub struct Syslog {
     /// Syslog facility
@@ -167,6 +167,12 @@ impl Syslog {
     }
 }
 
+impl SinkConfigBuild for Syslog {
+    fn build(&self) -> LogSink {
+        LogSink::Syslog(LogSinkSyslog::new(self))
+    }
+}
+
 impl SinkConfigTrait for Syslog {
     fn get_level(&self) -> Level {
         self.level
@@ -179,10 +185,6 @@ impl SinkConfigTrait for Syslog {
     fn write_hash(&self, hasher: &mut Box<dyn Hasher>) {
         self.hash(hasher);
         hasher.write(b"Syslog");
-    }
-
-    fn build(&self) -> LogSink {
-        LogSink::Syslog(LogSinkSyslog::new(self))
     }
 }
 

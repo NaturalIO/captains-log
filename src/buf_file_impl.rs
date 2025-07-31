@@ -1,5 +1,5 @@
 use crate::{
-    config::{LogFormat, SinkConfigTrait},
+    config::{LogFormat, SinkConfigBuild, SinkConfigTrait},
     log_impl::{LogSink, LogSinkTrait},
     rotation::*,
     time::Timer,
@@ -55,7 +55,7 @@ const FLUSH_SIZE_DEFAULT: usize = 4096;
 ///     if let Some(ro) = rotate {
 ///         file = file.rotation(ro);
 ///     }
-///     return Builder::default().signal(signal_hook::consts::SIGUSR1).buf_file(file);
+///     return Builder::default().signal(signal_hook::consts::SIGUSR1).add_sink(file);
 /// }
 ///```
 #[derive(Hash)]
@@ -129,6 +129,12 @@ impl LogBufFile {
     }
 }
 
+impl SinkConfigBuild for LogBufFile {
+    fn build(&self) -> LogSink {
+        LogSink::BufFile(LogSinkBufFile::new(self))
+    }
+}
+
 impl SinkConfigTrait for LogBufFile {
     fn get_level(&self) -> Level {
         self.level
@@ -141,10 +147,6 @@ impl SinkConfigTrait for LogBufFile {
     fn write_hash(&self, hasher: &mut Box<dyn Hasher>) {
         self.hash(hasher);
         hasher.write(b"LogBufFile");
-    }
-
-    fn build(&self) -> LogSink {
-        LogSink::BufFile(LogSinkBufFile::new(self))
     }
 }
 

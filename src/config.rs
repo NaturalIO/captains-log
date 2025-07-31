@@ -1,6 +1,3 @@
-use crate::buf_file_impl::LogBufFile;
-use crate::console_impl::LogConsole;
-use crate::file_impl::LogRawFile;
 use crate::log_impl::setup_log;
 use crate::{
     formatter::{FormatRecord, TimeFormatter},
@@ -56,27 +53,8 @@ impl Builder {
         self
     }
 
-    /// Add raw file sink that supports multiprocess atomic append
-    pub fn raw_file(mut self, config: LogRawFile) -> Self {
-        self.sinks.push(Box::new(config));
-        self
-    }
-
-    /// Add buffered file sink which merged I/O and delay flush
-    pub fn buf_file(mut self, config: LogBufFile) -> Self {
-        self.sinks.push(Box::new(config));
-        self
-    }
-
-    /// Add console sink
-    pub fn console(mut self, config: LogConsole) -> Self {
-        self.sinks.push(Box::new(config));
-        self
-    }
-
-    #[cfg(feature = "syslog")]
-    /// Add syslog sink
-    pub fn syslog(mut self, config: crate::Syslog) -> Self {
+    /// Add different types of log sink config, can be called multiple times.
+    pub fn add_sink<S: SinkConfigTrait>(mut self, config: S) -> Self {
         self.sinks.push(Box::new(config));
         self
     }
@@ -113,7 +91,13 @@ impl Builder {
     }
 }
 
-pub(crate) trait SinkConfigTrait {
+pub(crate) trait SinkConfigBuild {
+    /// Build an actual sink from config
+    fn build(&self) -> LogSink;
+}
+
+#[allow(private_bounds)]
+pub trait SinkConfigTrait: 'static + SinkConfigBuild {
     /// get max log level of the sink
     fn get_level(&self) -> Level;
     /// Only file sink has path
@@ -121,8 +105,6 @@ pub(crate) trait SinkConfigTrait {
     fn get_file_path(&self) -> Option<Box<Path>>;
     /// Calculate hash for config comparison
     fn write_hash(&self, hasher: &mut Box<dyn Hasher>);
-    /// Build an actual sink from config
-    fn build(&self) -> LogSink;
 }
 
 pub type FormatFunc = fn(FormatRecord) -> String;

@@ -39,7 +39,7 @@ pub fn prod_format_f(r: FormatRecord) -> String {
 
 pub fn console_logger(target: ConsoleTarget, max_level: Level) -> Builder {
     let console_config = LogConsole::new(target, max_level, LOG_FORMAT_DEBUG);
-    return Builder::default().console(console_config);
+    return Builder::default().add_sink(console_config);
 }
 
 /// Output to stdout with LOG_FORMAT_DEBUG, with dynamic=true.
@@ -111,7 +111,7 @@ pub fn raw_file_logger_custom<P: Into<PathBuf>>(
     let dir = p.parent().unwrap();
     let file_name = Path::new(p.file_name().unwrap());
     let file = LogRawFile::new(dir, file_name, max_level, format);
-    return Builder::default().signal(signal_hook::consts::SIGUSR1).raw_file(file);
+    return Builder::default().signal(signal_hook::consts::SIGUSR1).add_sink(file);
 }
 
 /// Setup one log file.
@@ -150,8 +150,8 @@ where
 
     return Builder::default()
         .signal(signal_hook::consts::SIGUSR1)
-        .raw_file(debug_file)
-        .raw_file(error_file);
+        .add_sink(debug_file)
+        .add_sink(error_file);
 }
 
 /// Setup one buffered log file, with custom time_fmt & format_func.
@@ -180,7 +180,7 @@ pub fn buffered_file_logger_custom<P: Into<PathBuf>>(
     if let Some(ro) = rotate {
         file = file.rotation(ro);
     }
-    return Builder::default().signal(signal_hook::consts::SIGUSR1).buf_file(file);
+    return Builder::default().signal(signal_hook::consts::SIGUSR1).add_sink(file);
 }
 
 /// Setup one buffered log file, with flush_millis set to 0
@@ -216,9 +216,11 @@ pub fn buffered_rotated_file_logger<P: Into<PathBuf>>(
     )
 }
 
+/// Output to local syslog
 #[cfg(feature = "syslog")]
+#[cfg_attr(docsrs, doc(cfg(feature = "syslog")))]
 pub fn syslog_local(max_level: Level) -> Builder {
     use crate::Facility;
     let syslog = crate::Syslog::new(Facility::LOG_USER, max_level);
-    return Builder::default().syslog(syslog);
+    return Builder::default().add_sink(syslog);
 }

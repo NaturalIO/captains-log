@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Remove Builder::add_XXX functions, replace them with add_sink()
+
 ### Fixed
 
 ## [0.7.0] 2025-07-31

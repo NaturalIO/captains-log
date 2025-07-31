@@ -1,5 +1,5 @@
 use crate::{
-    config::{LogFormat, SinkConfigTrait},
+    config::{LogFormat, SinkConfigBuild, SinkConfigTrait},
     env::EnvVarDefault,
     log_impl::{LogSink, LogSinkTrait},
     time::Timer,
@@ -20,7 +20,7 @@ use std::str::FromStr;
 ///
 /// pub fn console_logger(target: ConsoleTarget, max_level: Level) -> Builder {
 ///     let console_config = LogConsole::new(target, max_level, recipe::LOG_FORMAT_DEBUG);
-///     return Builder::default().console(console_config);
+///     return Builder::default().add_sink(console_config);
 /// }
 /// ```
 #[derive(Hash)]
@@ -68,6 +68,12 @@ impl FromStr for ConsoleTarget {
 // - impl<T, U> Into<U> for T where U: From<T>;
 crate::impl_from_env!(ConsoleTarget);
 
+impl SinkConfigBuild for LogConsole {
+    fn build(&self) -> LogSink {
+        LogSink::Console(LogSinkConsole::new(self))
+    }
+}
+
 impl SinkConfigTrait for LogConsole {
     fn get_level(&self) -> Level {
         self.level
@@ -80,10 +86,6 @@ impl SinkConfigTrait for LogConsole {
     fn write_hash(&self, hasher: &mut Box<dyn Hasher>) {
         self.hash(hasher);
         hasher.write(b"LogConsole");
-    }
-
-    fn build(&self) -> LogSink {
-        LogSink::Console(LogSinkConsole::new(self))
     }
 }
 

@@ -133,7 +133,7 @@
 //!     "/tmp", "test.log", log::Level::Trace, debug_format);
 //! let config = Builder::default()
 //!     .signal(signal_hook::consts::SIGINT)
-//!     .raw_file(debug_file);
+//!     .add_sink(debug_file);
 //! config.build();
 //! ```
 //!
