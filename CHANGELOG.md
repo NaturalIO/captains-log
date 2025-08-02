@@ -13,9 +13,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Remove Builder::add_XXX functions, replace them with add_sink()
-
 ### Fixed
+
+## [0.8.0] 2025-08-03
+
+### Added
+
+- Add LogSinkTrait::open(), to be distinguish with reopen().
+
+- Add RingFile sink as a debugging tool for deadlock
+
+- Re-export signal_consts for convenience
+
+### Changed
+
+- Remove Builder::add_XXX functions, replace them with add_sink()
 
 ## [0.7.0] 2025-07-31
 
