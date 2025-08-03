@@ -22,6 +22,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 /// Enable feature `ringfile` in your Cargo.toml.
 ///
 /// Replace the log setup with the following in your test case:
+///
+///(Set the level to Info or higher, to turn of other debugging logs.)
 /// ``` rust
 /// use captains_log::*;
 /// recipe::ring_file("/tmp/ring.log", 512*1024*1024, Level::Info,
@@ -52,6 +54,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 /// The backend is provided by [RingFile crate](https://docs.rs/ring-file). To ensure low
 /// latency, the buffer is protected by a spinlock instead of a mutex. After the program hangs, because
 /// no more message will be written to the buffer, log content can be safely copied from the buffer area to disk.
+///
+/// Be aware that it did not use mlock to prevent memory being swapping. (Swapping might make the
+/// code slow to prevent bug reproduction). When your memory is not enough, use a smaller buf_size and turn off the swap with `swapoff -a`.
 ///
 /// A real-life debugging story can be found on <https://github.com/frostyplanet/crossfire-rs/issues/24>.
 #[derive(Hash)]
