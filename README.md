@@ -20,9 +20,17 @@ docs.rs: [![docs.rs][docsrs-image]][docsrs]
 
     + `LogRawFile`:  Support atomic appending from multi-process on linux
 
-    + `LogBufFile` :  Write to log file with merged I/O and delay flush, and optional self-rotation.
+    + [LogBufFile](https://docs.rs/captains-log/latest/captains_log/struct.LogBufFile.html) :  Write to log file with merged I/O and delay flush, and optional self-rotation.
 
-    + `Syslog`: (feature flag `syslog`) Write to local or remote syslog server, with timeout and auto reconnect.
+    + [Syslog](https://docs.rs/captains-log/latest/captains_log/struct.Syslog.html): (**feature** `syslog`)
+
+        Write to local or remote syslog server, with timeout and auto reconnect.
+
+    + [LogRingFile](https://docs.rs/captains-log/latest/captains_log/struct.LogRingFile.html): (**feature** `ringfile`)
+
+        For deadlock / race condition debugging,
+        collect log to ring buffer in memory. See the doc of [LogRingFile] for how to use.
+
 
 * Log panic message by default.
 
@@ -32,15 +40,15 @@ docs.rs: [![docs.rs][docsrs-image]][docsrs]
 
 * Provides many preset recipes in [recipe] module for convenience.
 
-* Supports configured from environment.
+* Supports [configured by environment](#configure-by-environment).
 
-* Fine-grain module-level log control.
+* [Fine-grain module-level control](#fine-grain-module-level-control).
 
-  Provides `LogFilter` to filter specified logs on-the-fly.
+  Provides [LogFilter](https://docs.rs/captains-log/latest/captains_log/struct.LogFilter.html) to filter specified logs on-the-fly.
 
-* API-level log handling.
+* [API-level log handling](#api-level-log-handling).
 
-  Provides `LogFilterKV` for API logging with additional key.
+  Provides [LogFilterKV](https://docs.rs/captains-log/latest/captains_log/struct.LogFilterKV.html) for API logging with additional key.
 
   For example, you can set `req_id` in `LogFilterKV`, and track the
 complete request handling procedure from log.
@@ -150,7 +158,7 @@ let config = Builder::default()
 config.build();
 ```
 
-## Fine-grain module-level log control
+## Fine-grain module-level control
 
 Place `LogFilter` in Arc and share among coroutines.
 Log level can be changed on-the-fly.
