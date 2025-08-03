@@ -33,16 +33,16 @@ use std::sync::atomic::{AtomicBool, Ordering};
 /// Then add some high-level log to critical path in the code, try to reproduce the problem, and
 /// reduce the amount of log if the bug not occur.
 ///
-/// On start-up, it will create a limited-size ring-buffer-like memory. The log content will be hold within memory but
+/// On start-up, it will create a limited-size ring-buffer-like memory. The log content will be held within memory but
 /// not written to disk, old logs will be overwritten by new ones. Until specified signal arrives, the last
-/// part of log message will be dumped to file, in time order.
+/// part of log message will be dumped to the file, in time order.
 ///
-/// Once your program hangs up completely , find your process pid and send a signal to it.
+/// Once your program hangs up completely, find your process PID and send a signal to it.
 ///
 /// ``` shell
 /// kill -SIGHUP <pid>
 /// ```
-/// There will be messages print to stdout:
+/// There will be messages printed to stdout:
 ///
 /// ``` text
 /// RingFile: start dumping
@@ -53,9 +53,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 ///
 /// The backend is provided by [RingFile crate](https://docs.rs/ring-file). To ensure low
 /// latency, the buffer is protected by a spinlock instead of a mutex. After the program hangs, because
-/// no more message will be written to the buffer, log content can be safely copied from the buffer area to disk.
+/// no more messages will be written to the buffer, log content can be safely copied from the buffer area to disk.
 ///
-/// Be aware that it did not use mlock to prevent memory being swapping. (Swapping might make the
+/// Be aware that it did not use mlock to prevent memory from being swapping. (Swapping might make the
 /// code slow to prevent bug reproduction). When your memory is not enough, use a smaller buf_size and turn off the swap with `swapoff -a`.
 ///
 /// A real-life debugging story can be found on <https://github.com/frostyplanet/crossfire-rs/issues/24>.
