@@ -64,7 +64,7 @@ Cargo.toml
 ``` toml
 [dependencies]
 log = { version = "0.4", features = ["std", "kv_unstable"] }
-captains_log = "0.7"
+captains_log = "0.8"
 ```
 
 lib.rs or main.rs:
