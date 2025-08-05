@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.8.1-0.8.3] 2025-08-06
+
+### Fixed
+
+- Fix the doc of ringfile feature.
+
 ## [0.8.0] 2025-08-03
 
 ### Added
