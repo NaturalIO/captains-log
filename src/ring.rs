@@ -21,13 +21,16 @@ use std::sync::atomic::{AtomicBool, Ordering};
 ///
 /// Enable feature `ringfile` in your Cargo.toml.
 ///
-/// Replace the log setup with the following in your test case:
+/// Replace the log setup with the following [recipe::ring_file()](crate::recipe::ring_file()) in your test case:
 ///
-///(Set the level to Info or higher, to turn of other debugging logs.)
+///(Set the level to Info or higher, to turn off other debugging logs.)
+///
 /// ``` rust
 /// use captains_log::*;
+/// // the recipe already register signal and dynamic=true, do not use test(),
+/// // because test() will clear the signal.
 /// recipe::ring_file("/tmp/ring.log", 512*1024*1024, Level::Info,
-///     signal_consts::SIGHUP).test().build().expect("log setup");
+///     signal_consts::SIGHUP).build().expect("log setup");
 /// ```
 ///
 /// Then add some high-level log to critical path in the code, try to reproduce the problem, and
@@ -132,6 +135,7 @@ impl LogSinkRingFile {
 
 impl LogSinkTrait for LogSinkRingFile {
     fn open(&self) -> std::io::Result<()> {
+        println!("ringfile is on");
         Ok(())
     }
 

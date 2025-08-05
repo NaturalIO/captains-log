@@ -227,6 +227,10 @@ pub fn syslog_local(max_level: Level) -> Builder {
 
 /// Initialize a ring buffer to hold the log. For complete usage, refer to the description of [LogRingFile].
 ///
+/// # NOTE:
+/// the recipe already register signal and dynamic=true, **do not use test()** here,
+/// because [test()](crate::Builder::test()) will clear the signal.
+///
 /// # Arguments:
 ///
 /// - `file_path`: path on disk to which the log content will be dumped
@@ -242,5 +246,7 @@ pub fn ring_file<P: Into<PathBuf>>(
     file_path: P, buf_size: i32, max_level: Level, dump_signal: i32,
 ) -> Builder {
     let ring = crate::LogRingFile::new(file_path, buf_size, max_level, LOG_FORMAT_DEBUG);
-    return Builder::default().signal(dump_signal).add_sink(ring);
+    let mut config = Builder::default().signal(dump_signal).add_sink(ring);
+    config.dynamic = true;
+    config
 }
