@@ -33,12 +33,12 @@ pub enum LogSink {
     RingFile(crate::ring::LogSinkRingFile),
 }
 
-struct GlobalLoggerConainer {
+struct GlobalLoggerStatic {
     logger: UnsafeCell<GlobalLogger>,
     lock: AtomicBool,
 }
 
-struct GlobalLoggerGuard<'a>(&'a GlobalLoggerConainer);
+struct GlobalLoggerGuard<'a>(&'a GlobalLoggerStatic);
 
 impl Drop for GlobalLoggerGuard<'_> {
     fn drop(&mut self) {
@@ -46,7 +46,7 @@ impl Drop for GlobalLoggerGuard<'_> {
     }
 }
 
-impl GlobalLoggerConainer {
+impl GlobalLoggerStatic {
     const fn new() -> Self {
         Self {
             logger: UnsafeCell::new(GlobalLogger {
@@ -114,13 +114,13 @@ impl GlobalLoggerConainer {
     }
 }
 
-unsafe impl Send for GlobalLoggerConainer {}
-unsafe impl Sync for GlobalLoggerConainer {}
+unsafe impl Send for GlobalLoggerStatic {}
+unsafe impl Sync for GlobalLoggerStatic {}
 
 /// Initialize global logger from Builder
 ///
 /// **NOTE**: You can call this function multiple times when **builder.dynamic=true**,
-/// but **cannot mixed used captains_log with other logger implement**, becase log::set_logger()
+/// but **cannot mixed used captains_log with other logger implement**, because log::set_logger()
 /// cannot be called twice.
 pub fn setup_log(builder: Builder) -> Result<(), ()> {
     if let Ok(true) = GLOBAL_LOGGER.try_setup(&builder) {
@@ -329,7 +329,7 @@ impl log::Log for GlobalLogger {
     }
 }
 
-static GLOBAL_LOGGER: GlobalLoggerConainer = GlobalLoggerConainer::new();
+static GLOBAL_LOGGER: GlobalLoggerStatic = GlobalLoggerStatic::new();
 
 /// log handle for panic hook
 #[doc(hidden)]
