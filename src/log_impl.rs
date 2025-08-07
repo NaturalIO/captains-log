@@ -2,12 +2,11 @@ use crate::{buf_file_impl::LogSinkBufFile, console_impl::LogSinkConsole, file_im
 use crate::{config::Builder, time::Timer};
 use arc_swap::ArcSwap;
 use backtrace::Backtrace;
-use lazy_static::lazy_static;
-use parking_lot::Mutex;
 use signal_hook::iterator::Signals;
+use std::cell::UnsafeCell;
 use std::mem::transmute;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
     Arc,
 };
 use std::thread;
@@ -34,10 +33,122 @@ pub enum LogSink {
     RingFile(crate::ring::LogSinkRingFile),
 }
 
+struct GlobalLoggerConainer {
+    logger: UnsafeCell<GlobalLogger>,
+    lock: AtomicBool,
+}
+
+struct GlobalLoggerGuard<'a>(&'a GlobalLoggerConainer);
+
+impl Drop for GlobalLoggerGuard<'_> {
+    fn drop(&mut self) {
+        self.0.unlock();
+    }
+}
+
+impl GlobalLoggerConainer {
+    const fn new() -> Self {
+        Self {
+            logger: UnsafeCell::new(GlobalLogger {
+                config_checksum: AtomicU64::new(0),
+                inner: None,
+                signal_listener: AtomicBool::new(false),
+            }),
+            lock: AtomicBool::new(false),
+        }
+    }
+
+    fn get_logger_mut(&self) -> &mut GlobalLogger {
+        unsafe { transmute(self.logger.get()) }
+    }
+
+    fn get_logger(&self) -> &GlobalLogger {
+        unsafe { transmute(self.logger.get()) }
+    }
+
+    fn lock<'a>(&'a self) -> GlobalLoggerGuard<'a> {
+        while self
+            .lock
+            .compare_exchange_weak(false, true, Ordering::SeqCst, Ordering::Relaxed)
+            .is_err()
+        {
+            // Normally this does not contend, if your test does not run concurrently.
+            std::thread::yield_now();
+        }
+        GlobalLoggerGuard(self)
+    }
+
+    fn unlock(&self) {
+        self.lock.store(false, Ordering::SeqCst);
+    }
+
+    /// Return Ok(false) when reinit, Ok(true) when first init, Err for error
+    fn try_setup(&self, builder: &Builder) -> Result<bool, ()> {
+        let _guard = self.lock();
+        let res = { self.get_logger().check_the_same(builder) };
+        match res {
+            Some(true) => {
+                if let Err(e) = self.get_logger().open() {
+                    eprintln!("failed to open log sink: {:?}", e);
+                    return Err(());
+                }
+                return Ok(false);
+            }
+            Some(false) => {
+                if !builder.dynamic {
+                    panic_or_error();
+                    return Err(());
+                }
+                let res = self.get_logger().reinit(builder);
+                res?;
+                // reset the log level
+                log::set_max_level(builder.get_max_level());
+                return Ok(false);
+            }
+            None => {
+                let res = { self.get_logger_mut().init(builder) };
+                res?;
+                return Ok(true);
+            }
+        }
+    }
+}
+
+unsafe impl Send for GlobalLoggerConainer {}
+unsafe impl Sync for GlobalLoggerConainer {}
+
+/// Initialize global logger from Builder
+pub fn setup_log(builder: Builder) -> Result<(), ()> {
+    if let Ok(true) = GLOBAL_LOGGER.try_setup(&builder) {
+        let logger = GLOBAL_LOGGER.get_logger();
+        // Set logger can only be called once
+        if let Err(e) = log::set_logger(logger) {
+            eprintln!("log::set_logger return error: {:?}", e);
+            return Err(());
+        }
+        log::set_max_level(builder.get_max_level());
+        // panic hook can be set multiple times
+        if builder.continue_when_panic {
+            std::panic::set_hook(Box::new(panic_no_exit_hook));
+        } else {
+            std::panic::set_hook(Box::new(panic_and_exit_hook));
+        }
+        let signals = builder.rotation_signals.clone();
+        if signals.len() > 0 {
+            if false == logger.signal_listener.swap(true, Ordering::SeqCst) {
+                thread::spawn(move || {
+                    GLOBAL_LOGGER.get_logger().listener_for_signal(signals);
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Global static structure to hold the logger
 struct GlobalLogger {
     /// checksum for config comparison
-    config_checksum: u64,
+    config_checksum: AtomicU64,
     /// Global static needs initialization when declaring,
     /// default to be empty
     inner: Option<LoggerInner>,
@@ -77,7 +188,17 @@ impl LoggerInner {
 }
 
 impl GlobalLogger {
-    fn open(&mut self) -> std::io::Result<()> {
+    fn listener_for_signal(&self, signals: Vec<i32>) {
+        println!("signal_listener started");
+        let mut signals = Signals::new(&signals).unwrap();
+        for __sig in signals.forever() {
+            let _ = self.reopen();
+        }
+        println!("signal_listener exit");
+    }
+
+    /// On program/test Initialize
+    fn open(&self) -> std::io::Result<()> {
         if let Some(inner) = self.inner.as_ref() {
             match &inner {
                 LoggerInner::Once(inner) => {
@@ -97,7 +218,8 @@ impl GlobalLogger {
         Ok(())
     }
 
-    pub fn reopen(&mut self) -> std::io::Result<()> {
+    /// On signal to reopen file.
+    pub fn reopen(&self) -> std::io::Result<()> {
         if let Some(inner) = self.inner.as_ref() {
             match &inner {
                 LoggerInner::Once(inner) => {
@@ -117,47 +239,37 @@ impl GlobalLogger {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    fn init(&mut self, builder: &Builder) -> std::io::Result<bool> {
-        let new_checksum = builder.cal_checksum();
+    /// Return Some(true) to skip, Some(false) to reinit, None to init
+    fn check_the_same(&self, builder: &Builder) -> Option<bool> {
         if self.inner.is_some() {
-            if self.config_checksum == new_checksum {
-                // Config is the same, no need to reinit
-                self.open()?;
-                return Ok(true);
-            }
-            if !builder.dynamic {
-                panic_or_error();
-                return Ok(false);
-            }
+            return Some(self.config_checksum.load(Ordering::Acquire) == builder.cal_checksum());
         }
-        let mut sinks = Vec::new();
-        for config in &builder.sinks {
-            let logger_sink = config.build();
-            logger_sink.open()?;
-            sinks.push(logger_sink);
-        }
+        None
+    }
 
+    /// Re-configure the logger sink
+    fn reinit(&self, builder: &Builder) -> Result<(), ()> {
+        let sinks = builder.build_sinks()?;
         if let Some(inner) = self.inner.as_ref() {
             inner.set(sinks);
+            self.config_checksum.store(builder.cal_checksum(), Ordering::Release);
         } else {
-            if builder.dynamic {
-                self.inner.replace(LoggerInner::Dyn(ArcSwap::new(Arc::new(sinks))));
-            } else {
-                self.inner.replace(LoggerInner::Once(sinks));
-            }
+            unreachable!();
         }
-        self.config_checksum = new_checksum;
+        Ok(())
+    }
 
-        let _ = unsafe { log::set_logger(transmute::<&Self, &'static Self>(self)) };
-
-        // panic hook can be set multiple times
-        if builder.continue_when_panic {
-            std::panic::set_hook(Box::new(panic_no_exit_hook));
+    #[allow(dead_code)]
+    fn init(&mut self, builder: &Builder) -> Result<(), ()> {
+        let sinks = builder.build_sinks()?;
+        assert!(self.inner.is_none());
+        if builder.dynamic {
+            self.inner.replace(LoggerInner::Dyn(ArcSwap::new(Arc::new(sinks))));
         } else {
-            std::panic::set_hook(Box::new(panic_and_exit_hook));
+            self.inner.replace(LoggerInner::Once(sinks));
         }
-        Ok(true)
+        self.config_checksum.store(builder.cal_checksum(), Ordering::Release);
+        Ok(())
     }
 }
 
@@ -213,15 +325,7 @@ impl log::Log for GlobalLogger {
     }
 }
 
-lazy_static! {
-    // Mutex only access on init and reopen, bypassed while logging,
-    // because crate log only use const raw pointer to access GlobalLogger.
-    static ref GLOBAL_LOGGER: Mutex<GlobalLogger> = Mutex::new(GlobalLogger {
-        config_checksum: 0,
-        inner: None ,
-        signal_listener: AtomicBool::new(false),
-    });
-}
+static GLOBAL_LOGGER: GlobalLoggerConainer = GlobalLoggerConainer::new();
 
 /// log handle for panic hook
 #[doc(hidden)]
@@ -249,48 +353,4 @@ fn panic_no_exit_hook(info: &std::panic::PanicHookInfo) {
     log_panic(info);
     eprint!("not debug version, so don't exit process");
     log::logger().flush();
-}
-
-fn signal_listener(signals: Vec<i32>) {
-    let started;
-    {
-        let global_logger = GLOBAL_LOGGER.lock();
-        started = global_logger.signal_listener.swap(true, Ordering::SeqCst);
-    }
-    if started {
-        // NOTE: Once logger started to listen signal, does not support dynamic reconfigure.
-        eprintln!("signal listener already started");
-        return;
-    }
-    thread::spawn(move || {
-        let mut signals = Signals::new(&signals).unwrap();
-        for __sig in signals.forever() {
-            {
-                let mut global_logger = GLOBAL_LOGGER.lock();
-                let _ = global_logger.reopen();
-            }
-        }
-    });
-}
-
-/// Initialize global logger from Builder
-pub fn setup_log(builder: Builder) -> Result<(), ()> {
-    {
-        let mut global_logger = GLOBAL_LOGGER.lock();
-
-        match global_logger.init(&builder) {
-            Err(e) => {
-                println!("Initialize logger failed: {:?}", e);
-                return Err(());
-            }
-            Ok(false) => return Err(()),
-            Ok(true) => {}
-        }
-        log::set_max_level(builder.get_max_level());
-    }
-    let signals = builder.rotation_signals.clone();
-    if signals.len() > 0 {
-        signal_listener(signals);
-    }
-    Ok(())
 }

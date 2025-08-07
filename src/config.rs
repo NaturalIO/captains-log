@@ -1,7 +1,7 @@
 use crate::log_impl::setup_log;
 use crate::{
     formatter::{FormatRecord, TimeFormatter},
-    log_impl::LogSink,
+    log_impl::{LogSink, LogSinkTrait},
     time::Timer,
 };
 use log::{Level, LevelFilter, Record};
@@ -82,6 +82,19 @@ impl Builder {
             sink.write_hash(&mut hasher);
         }
         hasher.finish()
+    }
+
+    pub(crate) fn build_sinks(&self) -> Result<Vec<LogSink>, ()> {
+        let mut sinks = Vec::new();
+        for config in &self.sinks {
+            let logger_sink = config.build();
+            if let Err(e) = logger_sink.open() {
+                eprintln!("failed to open log sink: {:?}", e);
+                return Err(());
+            }
+            sinks.push(logger_sink);
+        }
+        Ok(sinks)
     }
 
     /// Setup global logger.
