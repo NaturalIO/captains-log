@@ -1,6 +1,6 @@
 [package]
 name = "captains-log"
-version = "0.8.3"
+version = "0.8.4"
 edition = "2018"
 authors = ["plan <frostyplanet@gmail.com>"]
 categories = ["development-tools::debugging"]
