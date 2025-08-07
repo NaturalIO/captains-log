@@ -99,6 +99,10 @@ impl Builder {
 
     /// Setup global logger.
     /// Equals to setup_log(builder)
+    ///
+    /// **NOTE**: You can call this function multiple times when **builder.dynamic=true**,
+    /// but **cannot mixed used captains_log with other logger implement**, becase log::set_logger()
+    /// cannot be called twice.
     pub fn build(self) -> Result<(), ()> {
         setup_log(self)
     }

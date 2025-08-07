@@ -118,6 +118,10 @@ unsafe impl Send for GlobalLoggerConainer {}
 unsafe impl Sync for GlobalLoggerConainer {}
 
 /// Initialize global logger from Builder
+///
+/// **NOTE**: You can call this function multiple times when **builder.dynamic=true**,
+/// but **cannot mixed used captains_log with other logger implement**, becase log::set_logger()
+/// cannot be called twice.
 pub fn setup_log(builder: Builder) -> Result<(), ()> {
     if let Ok(true) = GLOBAL_LOGGER.try_setup(&builder) {
         let logger = GLOBAL_LOGGER.get_logger();
