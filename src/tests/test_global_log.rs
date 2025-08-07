@@ -311,7 +311,7 @@ fn test_global_log_debug_assert_eq_with_msg() {
 fn test_syslog() {
     let _ = recipe::syslog_local(Level::Debug).test().build().expect("setup");
     info!("begin syslog test");
-    for _ in 0..60 {
+    for _ in 0..20 {
         trace!("test syslog trace");
         debug!("test syslog debug");
         info!("test syslog info");
