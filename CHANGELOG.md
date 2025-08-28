@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.8.5] 2025-08-28
+
+- RingFile: Trigger dump from panic hook to support debugging assertion.
+
 ## [0.8.4] 2025-08-07
 
 ### Fixed

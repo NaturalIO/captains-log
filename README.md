@@ -28,8 +28,7 @@ docs.rs: [![docs.rs][docsrs-image]][docsrs]
 
     + [LogRingFile](https://docs.rs/captains-log/latest/captains_log/struct.LogRingFile.html): (**feature** `ringfile`)
 
-        For deadlock / race condition debugging,
-        collect log to ring buffer in memory. See the doc of [LogRingFile] for how to use.
+        For deadlock / race condition debugging, collect log to ring buffer in memory.
 
 
 * Log panic message by default.
