@@ -58,18 +58,21 @@ impl GlobalLoggerStatic {
         }
     }
 
+    #[inline(always)]
     fn get_logger_mut(&self) -> &mut GlobalLogger {
         unsafe { transmute(self.logger.get()) }
     }
 
+    #[inline(always)]
     fn get_logger(&self) -> &GlobalLogger {
         unsafe { transmute(self.logger.get()) }
     }
 
+    #[inline]
     fn lock<'a>(&'a self) -> GlobalLoggerGuard<'a> {
         while self
             .lock
-            .compare_exchange_weak(false, true, Ordering::SeqCst, Ordering::Relaxed)
+            .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
             .is_err()
         {
             // Normally this does not contend, if your test does not run concurrently.
@@ -244,6 +247,7 @@ impl GlobalLogger {
     }
 
     /// Return Some(true) to skip, Some(false) to reinit, None to init
+    #[inline]
     fn check_the_same(&self, builder: &Builder) -> Option<bool> {
         if self.inner.is_some() {
             return Some(self.config_checksum.load(Ordering::Acquire) == builder.cal_checksum());
@@ -263,7 +267,6 @@ impl GlobalLogger {
         Ok(())
     }
 
-    #[allow(dead_code)]
     fn init(&mut self, builder: &Builder) -> Result<(), ()> {
         let sinks = builder.build_sinks()?;
         assert!(self.inner.is_none());
