@@ -291,13 +291,21 @@ impl BufFileInner {
         if let Some(f) = self.f.as_ref() {
             self.size += self.buf.len() as u64;
             // Use unbuffered I/O to ensure the write ok
-            let _ = unsafe {
-                libc::write(
-                    f.as_raw_fd() as libc::c_int,
-                    self.buf.as_ptr() as *const libc::c_void,
-                    self.buf.len(),
-                )
-            };
+            let mut p = self.buf.as_ptr() as *const u8;
+            let mut l = self.buf.len();
+            loop {
+                let r = unsafe {
+                    libc::write(f.as_raw_fd() as libc::c_int, p as *const libc::c_void, l)
+                };
+                if r == l as isize || r < 0 {
+                    // Ignore write error (disk err, space err), should not affect the program
+                    break;
+                }
+                // NOTE: If early return happens, means you are using a filesystem not
+                // supporting atomic append
+                l -= r as usize;
+                p = unsafe { p.add(r as usize) };
+            }
             unsafe { self.buf.set_len(0) };
             self.check_rotate();
         }
