@@ -138,12 +138,20 @@ impl LogSinkTrait for LogSinkFile {
                 // Get a stable buffer,
                 // for concurrently write to file from multi process.
                 let buf = self.formatter.process(now, r);
-                unsafe {
-                    let _ = libc::write(
-                        file.as_raw_fd() as libc::c_int,
-                        buf.as_ptr() as *const libc::c_void,
-                        buf.len(),
-                    );
+                let mut p = buf.as_ptr() as *const u8;
+                let mut l = buf.len();
+                loop {
+                    let r = unsafe {
+                        libc::write(file.as_raw_fd() as libc::c_int, p as *const libc::c_void, l)
+                    };
+                    if r == l as isize || r < 0 {
+                        // Ignore write error (disk err, space err), should not affect the program
+                        return;
+                    }
+                    // NOTE: If early return happens, means you are using a filesystem not
+                    // supporting atomic append
+                    l -= r as usize;
+                    p = unsafe { p.add(r as usize) };
                 }
             }
         }
