@@ -1,6 +1,5 @@
-use std::*;
-
 use log::{kv::Key, *};
+use std::{fmt, thread};
 
 use crate::time::Timer;
 
@@ -55,6 +54,11 @@ impl<'a> FormatRecord<'a> {
     #[inline(always)]
     pub fn msg(&self) -> &'a fmt::Arguments<'a> {
         self.record.args()
+    }
+
+    #[inline(always)]
+    pub fn thread_id(&self) -> thread::ThreadId {
+        thread::current().id()
     }
 }
 

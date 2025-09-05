@@ -16,6 +16,10 @@ pub const DEFAULT_TIME: &'static str = "%Y-%m-%d %H:%M:%S%.6f";
 /// [{time}][{level}][{file}:{line}] {msg}
 pub const LOG_FORMAT_DEBUG: LogFormat = LogFormat::new(DEFAULT_TIME, debug_format_f);
 
+/// [{time}][{level}][thread_id][{file}:{line}] {msg}
+pub const LOG_FORMAT_THREADED_DEBUG: LogFormat =
+    LogFormat::new(DEFAULT_TIME, threaded_debug_format_f);
+
 /// [{time}][{level}] {msg}
 pub const LOG_FORMAT_PROD: LogFormat = LogFormat::new(DEFAULT_TIME, prod_format_f);
 
@@ -27,6 +31,17 @@ pub fn debug_format_f(r: FormatRecord) -> String {
     let line = r.line();
     let msg = r.msg();
     format!("[{time}][{level}][{file}:{line}] {msg}\n").to_string()
+}
+
+/// formatter function: [{time}][{level}][thread_id][{file}:{line}] {msg}
+pub fn threaded_debug_format_f(r: FormatRecord) -> String {
+    let time = r.time();
+    let level = r.level();
+    let file = r.file();
+    let line = r.line();
+    let msg = r.msg();
+    let thread_id = r.thread_id();
+    format!("[{time}][{level}][{:?}][{file}:{line}] {msg}\n", thread_id).to_string()
 }
 
 /// formatter function: [{time}][{level}] {msg}
@@ -245,7 +260,7 @@ pub fn syslog_local(max_level: Level) -> Builder {
 pub fn ring_file<P: Into<PathBuf>>(
     file_path: P, buf_size: i32, max_level: Level, dump_signal: i32,
 ) -> Builder {
-    let ring = crate::LogRingFile::new(file_path, buf_size, max_level, LOG_FORMAT_DEBUG);
+    let ring = crate::LogRingFile::new(file_path, buf_size, max_level, LOG_FORMAT_THREADED_DEBUG);
     let mut config = Builder::default().signal(dump_signal).add_sink(ring);
     config.dynamic = true;
     config
