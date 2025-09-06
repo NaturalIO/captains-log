@@ -49,7 +49,7 @@ use std::path::Path;
 /// RingFile: start dumping
 /// RingFile: dump complete
 /// ```
-/// Then you can inspect your log content on disk (for this example `/tmp/ring.log`).
+/// The program will exit. Then you can inspect your log content on disk (for this example `/tmp/ring.log`).
 ///
 /// A real-life debugging story can be found on <https://github.com/frostyplanet/crossfire-rs/issues/24>.
 ///
@@ -126,6 +126,16 @@ impl LogSinkRingFile {
             ring: RingFile::new(config.buf_size as usize, config.file_path.clone()),
         }
     }
+
+    fn dump(&self) -> std::io::Result<()> {
+        println!("RingFile: start dumping");
+        if let Err(e) = self.ring.dump() {
+            println!("RingFile: dump error {:?}", e);
+            return Err(e);
+        }
+        println!("RingFile: dump complete");
+        Ok(())
+    }
 }
 
 impl LogSinkTrait for LogSinkRingFile {
@@ -135,13 +145,8 @@ impl LogSinkTrait for LogSinkRingFile {
     }
 
     fn reopen(&self) -> std::io::Result<()> {
-        println!("RingFile: start dumping");
-        if let Err(e) = self.ring.dump() {
-            println!("RingFile: dump error {:?}", e);
-            return Err(e);
-        }
-        println!("RingFile: dump complete");
-        Ok(())
+        let _ = self.dump();
+        std::process::exit(-2);
     }
 
     #[inline(always)]
@@ -155,6 +160,6 @@ impl LogSinkTrait for LogSinkRingFile {
     /// Manually dump the log
     #[inline(always)]
     fn flush(&self) {
-        let _ = self.reopen();
+        let _ = self.dump();
     }
 }
