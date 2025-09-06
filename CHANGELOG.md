@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- RingFile: A refactor, to store the buffer in thread local, remove lock content to avoid
+- RingFile: A refactor, to store the buffer in thread local, remove lock contention to avoid
 affecting the thread scheduling. Supports output to stdout.
  NOTE that the buf_size parameter has changed to size of per-thread.
 
