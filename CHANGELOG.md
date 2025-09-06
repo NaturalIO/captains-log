@@ -15,7 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.9.0] 2025-09-06
+
+### Added
+
+- Support thread_id in LogFormat
+
+### Changed
+
+- RingFile: A refactor, to store the buffer in thread local, remove lock content to avoid
+affecting the thread scheduling. Supports output to stdout.
+ NOTE that the buf_size parameter has changed to size of per-thread.
+
+### Fixed
+
+- LogRawFile and LogBufFile now handle short writes.
+
 ## [0.8.5] 2025-08-28
+
+### Changed
 
 - RingFile: Trigger dump from panic hook to support debugging assertion.
 
