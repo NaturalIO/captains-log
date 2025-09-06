@@ -8,6 +8,7 @@ use ring_file::*;
 
 use std::cell::UnsafeCell;
 use std::hash::{Hash, Hasher};
+use std::io::{stdout, Write};
 use std::mem::transmute;
 use std::path::Path;
 
@@ -146,19 +147,21 @@ impl LogSinkRingFile {
     }
 
     fn dump(&self) -> std::io::Result<()> {
-        println!("RingFile: start dumping");
+        let mut f = stdout();
+        let _ = f.write_all(b"RingFile: start dumping\n");
         if let Err(e) = self.get_ring().dump() {
-            println!("RingFile: dump error {:?}", e);
+            eprintln!("RingFile: dump error {:?}", e);
             return Err(e);
         }
-        println!("RingFile: dump complete");
+        let _ = f.write_all(b"RingFile: dump complete\n");
         Ok(())
     }
 }
 
 impl LogSinkTrait for LogSinkRingFile {
     fn open(&self) -> std::io::Result<()> {
-        println!("ringfile is on");
+        let mut f = stdout();
+        let _ = f.write_all(b"ringfile is on\n");
         self.get_ring_mut().clear();
         Ok(())
     }
