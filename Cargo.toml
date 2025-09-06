@@ -1,6 +1,6 @@
 [package]
 name = "captains-log"
-version = "0.9.2"
+version = "0.9.3"
 edition = "2018"
 authors = ["plan <frostyplanet@gmail.com>"]
 categories = ["development-tools::debugging"]
@@ -30,7 +30,7 @@ crossfire = "2.0"
 file-rotate = "0.8"
 flate2 = "1.0"
 syslog = { version = "7.0", optional = true }
-ring-file = { version = "0.2.2", optional = true}
+ring-file = { version = "0.2.3", optional = true}
 
 [features]
 default = []
