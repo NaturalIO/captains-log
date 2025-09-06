@@ -32,6 +32,11 @@ impl<'a> FormatRecord<'a> {
     }
 
     #[inline(always)]
+    pub fn timestamp_nano(&self) -> i64 {
+        self.time.now.timestamp_nanos_opt().unwrap_or(0)
+    }
+
+    #[inline(always)]
     pub fn time(&self) -> String {
         self.time.time_str()
     }

@@ -6,13 +6,8 @@ use crate::{
 use log::*;
 use ring_file::*;
 
-use std::cell::UnsafeCell;
 use std::hash::{Hash, Hasher};
-use std::io::Write;
-use std::mem::transmute;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU8, Ordering};
-use std::time::Duration;
+use std::path::Path;
 
 /// The LogRingFile sink is a way to minimize the cost of logging, for debugging deadlock or race condition,
 /// when the problem cannot be reproduce with ordinary log (because disk I/O will slow down the
@@ -30,7 +25,7 @@ use std::time::Duration;
 /// use captains_log::*;
 /// // the recipe already register signal and dynamic=true, do not use test(),
 /// // because test() will clear the signal.
-/// recipe::ring_file("/tmp/ring.log", 512*1024*1024, Level::Info,
+/// recipe::ring_file("/tmp/ring.log", 1024*1024, Level::Info,
 ///     signal_consts::SIGHUP).build().expect("log setup");
 /// ```
 ///
@@ -69,27 +64,30 @@ use std::time::Duration;
 /// # NOTE
 ///
 /// The backend is provided by [RingFile crate](https://docs.rs/ring-file). To ensure low
-/// latency, the buffer is protected by a spinlock instead of a mutex. After the program hangs, because
+/// latency, the buffers are put in thread local. After the program hangs, or panic, because
 /// no more messages will be written to the buffer, log content can be safely copied from the buffer area to disk.
 ///
 /// Be aware that it did not use mlock to prevent memory from being swapping. (Swapping might make the
 /// code slow to prevent bug reproduction). When your memory is not enough, use a smaller buf_size and turn off the swap with `swapoff -a`.
 ///
+/// The collected logs are from all the threads, including those exited. That means there might be
+/// very old contents mixed with newer contents. We suggest you log before thread exits. And also
+/// note that thread_id is reused after thread exits.
 #[derive(Hash)]
 pub struct LogRingFile {
-    pub file_path: Box<Path>,
+    pub file_path: Option<Box<Path>>,
     pub level: Level,
     pub format: LogFormat,
-    /// 0 < buf_size < i32::MAX
+    /// 0 < buf_size < i32::MAX, note this is the buffer size within each thread.
     pub buf_size: i32,
 }
 
 impl LogRingFile {
-    pub fn new<P: Into<PathBuf>>(
-        file_path: P, buf_size: i32, max_level: Level, format: LogFormat,
+    pub fn new(
+        file_path: Option<Box<Path>>, buf_size: i32, max_level: Level, format: LogFormat,
     ) -> Self {
         assert!(buf_size > 0);
-        Self { buf_size, file_path: file_path.into().into_boxed_path(), level: max_level, format }
+        Self { buf_size, file_path, level: max_level, format }
     }
 }
 
@@ -105,7 +103,7 @@ impl SinkConfigTrait for LogRingFile {
     }
 
     fn get_file_path(&self) -> Option<Box<Path>> {
-        Some(self.file_path.clone())
+        self.file_path.clone()
     }
 
     fn write_hash(&self, hasher: &mut Box<dyn Hasher>) {
@@ -114,55 +112,18 @@ impl SinkConfigTrait for LogRingFile {
     }
 }
 
-#[derive(Debug, PartialEq)]
-#[repr(u8)]
-enum RingFileState {
-    Unlock,
-    Lock,
-    Dump,
-}
-
 pub(crate) struct LogSinkRingFile {
     max_level: Level,
-    inner: UnsafeCell<RingFile>,
     formatter: LogFormat,
-    /// In order to be fast, use a spin lock instead of Mutex
-    locked: AtomicU8,
+    ring: RingFile,
 }
-
-unsafe impl Send for LogSinkRingFile {}
-unsafe impl Sync for LogSinkRingFile {}
 
 impl LogSinkRingFile {
     fn new(config: &LogRingFile) -> Self {
         Self {
             max_level: config.level,
-            inner: UnsafeCell::new(RingFile::new(config.buf_size, config.file_path.to_path_buf())),
             formatter: config.format.clone(),
-            locked: AtomicU8::new(RingFileState::Unlock as u8),
-        }
-    }
-
-    #[inline(always)]
-    fn get_inner(&self) -> &RingFile {
-        unsafe { transmute(self.inner.get()) }
-    }
-
-    #[inline(always)]
-    fn get_inner_mut(&self) -> &mut RingFile {
-        unsafe { transmute(self.inner.get()) }
-    }
-
-    #[inline(always)]
-    fn try_lock(&self, state: RingFileState, target: RingFileState) -> Result<(), u8> {
-        match self.locked.compare_exchange_weak(
-            state as u8,
-            target as u8,
-            Ordering::Acquire,
-            Ordering::Relaxed,
-        ) {
-            Ok(_) => Ok(()),
-            Err(s) => Err(s),
+            ring: RingFile::new(config.buf_size as usize, config.file_path.clone()),
         }
     }
 }
@@ -174,50 +135,20 @@ impl LogSinkTrait for LogSinkRingFile {
     }
 
     fn reopen(&self) -> std::io::Result<()> {
-        loop {
-            match self.try_lock(RingFileState::Unlock, RingFileState::Dump) {
-                Ok(_) => {
-                    println!("RingFile: start dumping");
-                    let r = self.get_inner().dump();
-                    self.locked.store(RingFileState::Unlock as u8, Ordering::Release);
-                    if let Err(e) = r {
-                        println!("RingFile: dump error {:?}", e);
-                        return Err(e);
-                    } else {
-                        println!("RingFile: dump complete");
-                        return Ok(());
-                    }
-                }
-                Err(s) => {
-                    if s == RingFileState::Dump as u8 {
-                        return Ok(());
-                    }
-                    std::hint::spin_loop();
-                }
-            }
+        println!("RingFile: start dumping");
+        if let Err(e) = self.ring.dump() {
+            println!("RingFile: dump error {:?}", e);
+            return Err(e);
         }
+        println!("RingFile: dump complete");
+        Ok(())
     }
 
     #[inline(always)]
     fn log(&self, now: &Timer, r: &Record) {
         if r.level() <= self.max_level {
-            let buf = self.formatter.process(now, r);
-            loop {
-                match self.try_lock(RingFileState::Unlock, RingFileState::Lock) {
-                    Ok(_) => {
-                        let _ = self.get_inner_mut().write_all(buf.as_bytes());
-                        self.locked.store(RingFileState::Unlock as u8, Ordering::Release);
-                        return;
-                    }
-                    Err(s) => {
-                        if s == RingFileState::Dump as u8 {
-                            std::thread::sleep(Duration::from_millis(100));
-                        } else {
-                            std::hint::spin_loop();
-                        }
-                    }
-                }
-            }
+            let (ts, content) = self.formatter.process_with_timestamp(now, r);
+            self.ring.write(ts, content);
         }
     }
 

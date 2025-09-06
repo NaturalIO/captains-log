@@ -250,17 +250,22 @@ pub fn syslog_local(max_level: Level) -> Builder {
 ///
 /// - `file_path`: path on disk to which the log content will be dumped
 ///
-/// - `buf_size`: the size of memory of ring buffer. limit: 0 < buf_size < i32::MAX
+/// - `buf_size`: the size of memory within each thread. limit: 0 < buf_size < i32::MAX
 ///
 /// - `max_level`: filter the log by level.
 ///
 /// - `dump_signal`: Dump the content from memory buffer to disk when the signal received.
 #[cfg(feature = "ringfile")]
 #[cfg_attr(docsrs, doc(cfg(feature = "ringfile")))]
-pub fn ring_file<P: Into<PathBuf>>(
+pub fn ring_file<P: AsRef<Path>>(
     file_path: P, buf_size: i32, max_level: Level, dump_signal: i32,
 ) -> Builder {
-    let ring = crate::LogRingFile::new(file_path, buf_size, max_level, LOG_FORMAT_THREADED_DEBUG);
+    let ring = crate::LogRingFile::new(
+        Some(file_path.as_ref().to_path_buf().into_boxed_path()),
+        buf_size,
+        max_level,
+        LOG_FORMAT_THREADED_DEBUG,
+    );
     let mut config = Builder::default().signal(dump_signal).add_sink(ring);
     config.dynamic = true;
     config
