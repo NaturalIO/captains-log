@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.9.2] 2025-09-07
+
+### Fixed
+
+- RingFile: clear content on open()
+
+## [0.9.1] 2025-09-06
+
+### Fixed
+
+- RingFile: call exit after dump()
+
 ## [0.9.0] 2025-09-06
 
 ### Added
