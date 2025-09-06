@@ -6,7 +6,9 @@ use crate::{
 use log::*;
 use ring_file::*;
 
+use std::cell::UnsafeCell;
 use std::hash::{Hash, Hasher};
+use std::mem::transmute;
 use std::path::Path;
 
 /// The LogRingFile sink is a way to minimize the cost of logging, for debugging deadlock or race condition,
@@ -115,21 +117,37 @@ impl SinkConfigTrait for LogRingFile {
 pub(crate) struct LogSinkRingFile {
     max_level: Level,
     formatter: LogFormat,
-    ring: RingFile,
+    ring: UnsafeCell<RingFile>,
 }
+
+unsafe impl Send for LogSinkRingFile {}
+unsafe impl Sync for LogSinkRingFile {}
 
 impl LogSinkRingFile {
     fn new(config: &LogRingFile) -> Self {
         Self {
             max_level: config.level,
             formatter: config.format.clone(),
-            ring: RingFile::new(config.buf_size as usize, config.file_path.clone()),
+            ring: UnsafeCell::new(RingFile::new(
+                config.buf_size as usize,
+                config.file_path.clone(),
+            )),
         }
+    }
+
+    #[inline(always)]
+    fn get_ring(&self) -> &RingFile {
+        unsafe { transmute(self.ring.get()) }
+    }
+
+    #[inline(always)]
+    fn get_ring_mut(&self) -> &mut RingFile {
+        unsafe { transmute(self.ring.get()) }
     }
 
     fn dump(&self) -> std::io::Result<()> {
         println!("RingFile: start dumping");
-        if let Err(e) = self.ring.dump() {
+        if let Err(e) = self.get_ring().dump() {
             println!("RingFile: dump error {:?}", e);
             return Err(e);
         }
@@ -141,6 +159,7 @@ impl LogSinkRingFile {
 impl LogSinkTrait for LogSinkRingFile {
     fn open(&self) -> std::io::Result<()> {
         println!("ringfile is on");
+        self.get_ring_mut().clear();
         Ok(())
     }
 
@@ -153,7 +172,7 @@ impl LogSinkTrait for LogSinkRingFile {
     fn log(&self, now: &Timer, r: &Record) {
         if r.level() <= self.max_level {
             let (ts, content) = self.formatter.process_with_timestamp(now, r);
-            self.ring.write(ts, content);
+            self.get_ring().write(ts, content);
         }
     }
 
