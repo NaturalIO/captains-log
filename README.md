@@ -18,7 +18,7 @@ docs.rs: [![docs.rs][docsrs-image]][docsrs]
 
     + `LogConsole`:   Console output to stdout/stderr.
 
-    + `LogRawFile`:  Support atomic appending from multi-process on linux
+    + `LogRawFile`:  Support atomic appending from multi-process on linux (with ext4, xfs)
 
     + [LogBufFile](https://docs.rs/captains-log/latest/captains_log/struct.LogBufFile.html) :  Write to log file with merged I/O and delay flush, and optional self-rotation.
 

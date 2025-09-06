@@ -13,7 +13,7 @@
 //!
 //!     + [LogConsole]:  Console output to stdout/stderr.
 //!
-//!     + [LogRawFile]:  Support atomic appending from multi-process on linux
+//!     + [LogRawFile]:  Support atomic appending from multi-process on linux (with ext4, xfs)
 //!
 //!     + [LogBufFile]:  Write to log file with merged I/O and delay flush, and optional self-rotation.
 //!
