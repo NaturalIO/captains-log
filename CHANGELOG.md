@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.9.4] 2025-09-08
+
+### Fixed
+
+- RingFile: Try fix the unsoundness on open()
+
 ## [0.9.3] 2025-09-07
 
 ### Fixed
