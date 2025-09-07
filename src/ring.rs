@@ -4,12 +4,11 @@ use crate::{
     time::Timer,
 };
 use log::*;
+use parking_lot::RwLock;
 use ring_file::*;
 
-use std::cell::UnsafeCell;
 use std::hash::{Hash, Hasher};
 use std::io::{stdout, Write};
-use std::mem::transmute;
 use std::path::Path;
 
 /// The LogRingFile sink is a way to minimize the cost of logging, for debugging deadlock or race condition,
@@ -118,7 +117,7 @@ impl SinkConfigTrait for LogRingFile {
 pub(crate) struct LogSinkRingFile {
     max_level: Level,
     formatter: LogFormat,
-    ring: UnsafeCell<RingFile>,
+    ring: RwLock<RingFile>,
 }
 
 unsafe impl Send for LogSinkRingFile {}
@@ -129,27 +128,18 @@ impl LogSinkRingFile {
         Self {
             max_level: config.level,
             formatter: config.format.clone(),
-            ring: UnsafeCell::new(RingFile::new(
-                config.buf_size as usize,
-                config.file_path.clone(),
-            )),
+            ring: RwLock::new(RingFile::new(config.buf_size as usize, config.file_path.clone())),
         }
-    }
-
-    #[inline(always)]
-    fn get_ring(&self) -> &RingFile {
-        unsafe { transmute(self.ring.get()) }
-    }
-
-    #[inline(always)]
-    fn get_ring_mut(&self) -> &mut RingFile {
-        unsafe { transmute(self.ring.get()) }
     }
 
     fn dump(&self) -> std::io::Result<()> {
         let mut f = stdout();
         let _ = f.write_all(b"RingFile: start dumping\n");
-        if let Err(e) = self.get_ring().dump() {
+        let r = {
+            let ring = self.ring.read();
+            ring.dump()
+        };
+        if let Err(e) = r {
             eprintln!("RingFile: dump error {:?}", e);
             return Err(e);
         }
@@ -162,7 +152,10 @@ impl LogSinkTrait for LogSinkRingFile {
     fn open(&self) -> std::io::Result<()> {
         let mut f = stdout();
         let _ = f.write_all(b"ringfile is on\n");
-        self.get_ring_mut().clear();
+        {
+            let mut ring = self.ring.write();
+            ring.clear();
+        }
         Ok(())
     }
 
@@ -175,7 +168,10 @@ impl LogSinkTrait for LogSinkRingFile {
     fn log(&self, now: &Timer, r: &Record) {
         if r.level() <= self.max_level {
             let (ts, content) = self.formatter.process_with_timestamp(now, r);
-            self.get_ring().write(ts, content);
+            {
+                let ring = self.ring.read();
+                ring.write(ts, content);
+            }
         }
     }
 
