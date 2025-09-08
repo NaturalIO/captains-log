@@ -59,7 +59,7 @@
 //! ``` toml
 //! [dependencies]
 //! log = { version = "0.4", features = ["std", "kv_unstable"] }
-//! captains_log = "0.9"
+//! captains_log = "0.10"
 //! ```
 //!
 //! lib.rs or main.rs:

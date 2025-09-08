@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.10.0] 2025-09-08
+
+### Changed
+
+-  RingFile: Refactor, because in previous impl different thread might produce different amount of data,
+ leaving some holes in the final dump.
+
+
 ## [0.9.4] 2025-09-08
 
 ### Fixed
