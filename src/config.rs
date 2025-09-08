@@ -166,12 +166,4 @@ impl LogFormat {
         let r = FormatRecord { record, time };
         return (self.format_fn)(r);
     }
-
-    #[cfg(feature = "ringfile")]
-    #[inline(always)]
-    pub(crate) fn process_with_timestamp(&self, now: &Timer, record: &Record) -> (i64, String) {
-        let time = TimeFormatter { now, fmt_str: self.time_fmt };
-        let r = FormatRecord { record, time };
-        return (r.timestamp_nano(), (self.format_fn)(r));
-    }
 }

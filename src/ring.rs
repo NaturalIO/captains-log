@@ -4,12 +4,11 @@ use crate::{
     time::Timer,
 };
 use log::*;
-use parking_lot::RwLock;
 use ring_file::*;
 
 use std::hash::{Hash, Hasher};
 use std::io::{stdout, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// The LogRingFile sink is a way to minimize the cost of logging, for debugging deadlock or race condition,
 /// when the problem cannot be reproduce with ordinary log (because disk I/O will slow down the
@@ -66,8 +65,8 @@ use std::path::Path;
 /// # NOTE
 ///
 /// The backend is provided by [RingFile crate](https://docs.rs/ring-file). To ensure low
-/// latency, the buffers are put in thread local. After the program hangs, or panic, because
-/// no more messages will be written to the buffer, log content can be safely copied from the buffer area to disk.
+/// latency, the data is handle in background thread backed by a unbounded channel.
+/// After the program hangs, or panic, log content can be safely copied from the buffer area to disk.
 ///
 /// Be aware that it did not use mlock to prevent memory from being swapping. (Swapping might make the
 /// code slow to prevent bug reproduction). When your memory is not enough, use a smaller buf_size and turn off the swap with `swapoff -a`.
@@ -77,7 +76,7 @@ use std::path::Path;
 /// note that thread_id is reused after thread exits.
 #[derive(Hash)]
 pub struct LogRingFile {
-    pub file_path: Option<Box<Path>>,
+    pub file_path: Box<Path>,
     pub level: Level,
     pub format: LogFormat,
     /// 0 < buf_size < i32::MAX, note this is the buffer size within each thread.
@@ -85,11 +84,11 @@ pub struct LogRingFile {
 }
 
 impl LogRingFile {
-    pub fn new(
-        file_path: Option<Box<Path>>, buf_size: i32, max_level: Level, format: LogFormat,
+    pub fn new<P: Into<PathBuf>>(
+        file_path: P, buf_size: i32, max_level: Level, format: LogFormat,
     ) -> Self {
         assert!(buf_size > 0);
-        Self { buf_size, file_path, level: max_level, format }
+        Self { buf_size, file_path: file_path.into().into_boxed_path(), level: max_level, format }
     }
 }
 
@@ -105,7 +104,7 @@ impl SinkConfigTrait for LogRingFile {
     }
 
     fn get_file_path(&self) -> Option<Box<Path>> {
-        self.file_path.clone()
+        Some(self.file_path.clone())
     }
 
     fn write_hash(&self, hasher: &mut Box<dyn Hasher>) {
@@ -117,7 +116,7 @@ impl SinkConfigTrait for LogRingFile {
 pub(crate) struct LogSinkRingFile {
     max_level: Level,
     formatter: LogFormat,
-    ring: RwLock<RingFile>,
+    ring: RingFile,
 }
 
 unsafe impl Send for LogSinkRingFile {}
@@ -128,18 +127,14 @@ impl LogSinkRingFile {
         Self {
             max_level: config.level,
             formatter: config.format.clone(),
-            ring: RwLock::new(RingFile::new(config.buf_size as usize, config.file_path.clone())),
+            ring: RingFile::new(config.buf_size, config.file_path.clone()),
         }
     }
 
     fn dump(&self) -> std::io::Result<()> {
         let mut f = stdout();
         let _ = f.write_all(b"RingFile: start dumping\n");
-        let r = {
-            let ring = self.ring.read();
-            ring.dump()
-        };
-        if let Err(e) = r {
+        if let Err(e) = self.ring.dump() {
             eprintln!("RingFile: dump error {:?}", e);
             return Err(e);
         }
@@ -152,10 +147,7 @@ impl LogSinkTrait for LogSinkRingFile {
     fn open(&self) -> std::io::Result<()> {
         let mut f = stdout();
         let _ = f.write_all(b"ringfile is on\n");
-        {
-            let mut ring = self.ring.write();
-            ring.clear();
-        }
+        self.ring.clear();
         Ok(())
     }
 
@@ -167,11 +159,8 @@ impl LogSinkTrait for LogSinkRingFile {
     #[inline(always)]
     fn log(&self, now: &Timer, r: &Record) {
         if r.level() <= self.max_level {
-            let (ts, content) = self.formatter.process_with_timestamp(now, r);
-            {
-                let ring = self.ring.read();
-                ring.write(ts, content);
-            }
+            let content = self.formatter.process(now, r);
+            self.ring.write(content);
         }
     }
 
