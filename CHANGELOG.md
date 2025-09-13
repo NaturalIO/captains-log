@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.12.0] 2025-09-13
+
+### Changed
+
+- Refactor namespace, move stuff to module: env, syslog, tracing_bridge, ringfile, ...
+
 ## [0.11.0] 2025-09-13
 
 ### Added
