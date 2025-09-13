@@ -4,12 +4,20 @@ use arc_swap::ArcSwap;
 use backtrace::Backtrace;
 use signal_hook::iterator::Signals;
 use std::cell::UnsafeCell;
+use std::io::Error;
 use std::mem::transmute;
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},
     Arc,
 };
 use std::thread;
+
+#[cfg(feature = "tracing")]
+use crate::tracing_bridge::CaptainsLogLayer;
+#[cfg(feature = "tracing")]
+use tracing::{dispatcher, Dispatch};
+#[cfg(feature = "tracing")]
+use tracing_subscriber::prelude::*;
 
 #[enum_dispatch]
 pub(crate) trait LogSinkTrait {
@@ -36,6 +44,7 @@ pub enum LogSink {
 struct GlobalLoggerStatic {
     logger: UnsafeCell<GlobalLogger>,
     lock: AtomicBool,
+    inited: AtomicBool,
 }
 
 struct GlobalLoggerGuard<'a>(&'a GlobalLoggerStatic);
@@ -53,8 +62,11 @@ impl GlobalLoggerStatic {
                 config_checksum: AtomicU64::new(0),
                 inner: None,
                 signal_listener: AtomicBool::new(false),
+                #[cfg(feature = "tracing")]
+                tracing_inited: AtomicBool::new(false),
             }),
             lock: AtomicBool::new(false),
+            inited: AtomicBool::new(false),
         }
     }
 
@@ -63,9 +75,21 @@ impl GlobalLoggerStatic {
         unsafe { transmute(self.logger.get()) }
     }
 
+    /// Assume already setup, for internal use.
     #[inline(always)]
-    fn get_logger(&self) -> &GlobalLogger {
+    fn get_logger(&'static self) -> &'static GlobalLogger {
         unsafe { transmute(self.logger.get()) }
+    }
+
+    /// This is the safe version for public use.
+    #[inline(always)]
+    fn try_get_logger(&'static self) -> Option<&'static GlobalLogger> {
+        let logger = self.get_logger();
+        if self.inited.load(Ordering::SeqCst) {
+            return Some(logger);
+        } else {
+            None
+        }
     }
 
     #[inline]
@@ -86,31 +110,52 @@ impl GlobalLoggerStatic {
     }
 
     /// Return Ok(false) when reinit, Ok(true) when first init, Err for error
-    fn try_setup(&self, builder: &Builder) -> Result<bool, ()> {
+    fn try_setup(&'static self, builder: &Builder) -> Result<bool, Error> {
         let _guard = self.lock();
         let res = { self.get_logger().check_the_same(builder) };
         match res {
             Some(true) => {
+                // checksum is the same
                 if let Err(e) = self.get_logger().open() {
                     eprintln!("failed to open log sink: {:?}", e);
-                    return Err(());
+                    return Err(e);
                 }
                 return Ok(false);
             }
             Some(false) => {
+                // checksum is not the same
                 if !builder.dynamic {
-                    panic_or_error();
-                    return Err(());
+                    let e = Error::other("log config differs but dynamic=false");
+                    eprintln!("{:?}", e);
+                    return Err(e);
                 }
-                let res = self.get_logger().reinit(builder);
-                res?;
+                let logger = self.get_logger();
+                if let Err(e) = logger.reinit(builder) {
+                    eprintln!("{:?}", e);
+                    return Err(e);
+                }
                 // reset the log level
                 log::set_max_level(builder.get_max_level());
+                #[cfg(feature = "tracing")]
+                {
+                    if builder.tracing_global {
+                        logger.init_tracing_global()?;
+                    }
+                }
                 return Ok(false);
             }
             None => {
+                // first init
                 let res = { self.get_logger_mut().init(builder) };
                 res?;
+                #[cfg(feature = "tracing")]
+                {
+                    let logger = self.get_logger();
+                    if builder.tracing_global {
+                        logger.init_tracing_global()?;
+                    }
+                }
+                self.inited.store(true, Ordering::SeqCst);
                 return Ok(true);
             }
         }
@@ -125,13 +170,13 @@ unsafe impl Sync for GlobalLoggerStatic {}
 /// **NOTE**: You can call this function multiple times when **builder.dynamic=true**,
 /// but **cannot mixed used captains_log with other logger implement**, because log::set_logger()
 /// cannot be called twice.
-pub fn setup_log(builder: Builder) -> Result<(), ()> {
-    if let Ok(true) = GLOBAL_LOGGER.try_setup(&builder) {
+pub fn setup_log(builder: Builder) -> Result<&'static GlobalLogger, Error> {
+    if GLOBAL_LOGGER.try_setup(&builder)? {
         let logger = GLOBAL_LOGGER.get_logger();
         // Set logger can only be called once
         if let Err(e) = log::set_logger(logger) {
             eprintln!("log::set_logger return error: {:?}", e);
-            return Err(());
+            return Err(Error::other(format!("log::set_logger() failed: {:?}", e)));
         }
         log::set_max_level(builder.get_max_level());
         // panic hook can be set multiple times
@@ -148,49 +193,65 @@ pub fn setup_log(builder: Builder) -> Result<(), ()> {
                 });
             }
         }
+        Ok(logger)
+    } else {
+        Ok(GLOBAL_LOGGER.get_logger())
     }
-    Ok(())
+}
+
+/// Return the GlobalLogger after initialized.
+pub fn get_global_logger() -> Option<&'static GlobalLogger> {
+    GLOBAL_LOGGER.try_get_logger()
 }
 
 /// Global static structure to hold the logger
-struct GlobalLogger {
+pub struct GlobalLogger {
     /// checksum for config comparison
     config_checksum: AtomicU64,
     /// Global static needs initialization when declaring,
     /// default to be empty
     inner: Option<LoggerInner>,
     signal_listener: AtomicBool,
+    #[cfg(feature = "tracing")]
+    tracing_inited: AtomicBool,
 }
 
-enum LoggerInner {
+enum LoggerInnerSink {
     Once(Vec<LogSink>),
     // using ArcSwap has more cost
     Dyn(ArcSwap<Vec<LogSink>>),
 }
 
-#[inline(always)]
-fn panic_or_error() {
-    #[cfg(debug_assertions)]
-    {
-        panic!("GlobalLogger cannot be initialized twice on dynamic==false");
-    }
-    #[cfg(not(debug_assertions))]
-    {
-        eprintln!("GlobalLogger cannot be initialized twice on dynamic==false");
-    }
+struct LoggerInner {
+    sinks: LoggerInnerSink,
 }
 
+unsafe impl Send for LoggerInner {}
+unsafe impl Sync for LoggerInner {}
+
 impl LoggerInner {
-    #[allow(dead_code)]
-    fn set(&self, sinks: Vec<LogSink>) {
-        match &self {
-            Self::Once(_) => {
-                panic_or_error();
+    #[inline]
+    fn new(dynamic: bool, sinks: Vec<LogSink>) -> Self {
+        let sinks = if dynamic {
+            LoggerInnerSink::Dyn(ArcSwap::new(Arc::new(sinks)))
+        } else {
+            LoggerInnerSink::Once(sinks)
+        };
+        Self { sinks }
+    }
+
+    #[inline]
+    fn set(&self, sinks: Vec<LogSink>) -> std::io::Result<()> {
+        match &self.sinks {
+            LoggerInnerSink::Once(_) => {
+                let e = Error::other("previous logger does not init with dynamic=true");
+                return Err(e);
             }
-            Self::Dyn(d) => {
+            LoggerInnerSink::Dyn(d) => {
                 d.store(Arc::new(sinks));
             }
         }
+        Ok(())
     }
 }
 
@@ -207,13 +268,13 @@ impl GlobalLogger {
     /// On program/test Initialize
     fn open(&self) -> std::io::Result<()> {
         if let Some(inner) = self.inner.as_ref() {
-            match &inner {
-                LoggerInner::Once(inner) => {
+            match &inner.sinks {
+                LoggerInnerSink::Once(inner) => {
                     for sink in inner.iter() {
                         sink.open()?;
                     }
                 }
-                LoggerInner::Dyn(inner) => {
+                LoggerInnerSink::Dyn(inner) => {
                     let sinks = inner.load();
                     for sink in sinks.iter() {
                         sink.open()?;
@@ -225,16 +286,16 @@ impl GlobalLogger {
         Ok(())
     }
 
-    /// On signal to reopen file.
+    /// Reopen file. This is a signal handler, also can be called manually.
     pub fn reopen(&self) -> std::io::Result<()> {
         if let Some(inner) = self.inner.as_ref() {
-            match &inner {
-                LoggerInner::Once(inner) => {
+            match &inner.sinks {
+                LoggerInnerSink::Once(inner) => {
                     for sink in inner.iter() {
                         sink.reopen()?;
                     }
                 }
-                LoggerInner::Dyn(inner) => {
+                LoggerInnerSink::Dyn(inner) => {
                     let sinks = inner.load();
                     for sink in sinks.iter() {
                         sink.reopen()?;
@@ -256,10 +317,10 @@ impl GlobalLogger {
     }
 
     /// Re-configure the logger sink
-    fn reinit(&self, builder: &Builder) -> Result<(), ()> {
+    fn reinit(&self, builder: &Builder) -> std::io::Result<()> {
         let sinks = builder.build_sinks()?;
         if let Some(inner) = self.inner.as_ref() {
-            inner.set(sinks);
+            inner.set(sinks)?;
             self.config_checksum.store(builder.cal_checksum(), Ordering::Release);
         } else {
             unreachable!();
@@ -267,16 +328,96 @@ impl GlobalLogger {
         Ok(())
     }
 
-    fn init(&mut self, builder: &Builder) -> Result<(), ()> {
+    fn init(&mut self, builder: &Builder) -> std::io::Result<()> {
         let sinks = builder.build_sinks()?;
         assert!(self.inner.is_none());
-        if builder.dynamic {
-            self.inner.replace(LoggerInner::Dyn(ArcSwap::new(Arc::new(sinks))));
-        } else {
-            self.inner.replace(LoggerInner::Once(sinks));
-        }
+        self.inner.replace(LoggerInner::new(builder.dynamic, sinks));
         self.config_checksum.store(builder.cal_checksum(), Ordering::Release);
         Ok(())
+    }
+
+    #[cfg(feature = "tracing")]
+    #[inline]
+    fn init_tracing_global(&'static self) -> Result<(), Error> {
+        let dist = self.tracing_dispatch()?;
+        if let Err(_) = dispatcher::set_global_default(dist) {
+            let e = Error::other("tracing global dispatcher already exists");
+            eprintln!("{:?}", e);
+            return Err(e);
+        }
+        self.tracing_inited.store(true, Ordering::SeqCst);
+        Ok(())
+    }
+
+    #[cfg(feature = "tracing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tracing")))]
+    /// Initialize a layer for tracing. Use this when you stacking multiple tracing layers.
+    ///
+    /// # NOTE:
+    ///
+    /// In order to prevent duplicate output, it will fail if out tracing global subscriber
+    /// has been initialized.
+    ///
+    /// We suggest you should opt out `tracing-log` from tracing_subscriber's default feature-flag,
+    /// or avoid calling init() in SubscriberInitExt trait,
+    /// otherwise it will failed when our logger detected in log::set_logger().
+    ///
+    /// # Example
+    /// ```
+    /// use captains_log::*;
+    /// use tracing::{dispatcher, Dispatch};
+    /// use tracing_subscriber::{fmt, registry, prelude::*};
+    /// let logger = recipe::raw_file_logger("/tmp/tracing.log", Level::Trace)
+    ///                     .build().expect("setup logger");
+    /// let reg = registry().with(fmt::layer().with_writer(std::io::stdout))
+    ///     .with(logger.tracing_layer().unwrap());
+    /// dispatcher::set_global_default(Dispatch::new(reg)).expect("init tracing");
+    /// ```
+    pub fn tracing_layer(&'static self) -> std::io::Result<CaptainsLogLayer> {
+        if self.tracing_inited.load(Ordering::SeqCst) {
+            let e = Error::other("global tracing dispatcher exists");
+            eprintln!("{:?}", e);
+            return Err(e);
+        }
+        return Ok(CaptainsLogLayer::new(self));
+    }
+
+    #[cfg(feature = "tracing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tracing")))]
+    /// Initialize a tracing Dispatch, you can set_global_default() or use in a scope.
+    ///
+    /// # NOTE:
+    ///
+    /// In order to prevent duplicate output, it will fail if out tracing global subscriber
+    /// has been initialized.
+    ///
+    /// We suggest you should opt out `tracing-log` from tracing_subscriber's default feature-flag,
+    /// or avoid calling init() in SubscriberInitExt trait,
+    /// otherwise it will failed when our logger detected in log::set_logger().
+    ///
+    /// # Example
+    /// ```
+    /// use captains_log::*;
+    /// use tracing::{dispatcher, Dispatch};
+    /// use tracing_subscriber::{fmt, registry, prelude::*};
+    ///
+    /// let logger = recipe::raw_file_logger("/tmp/tracing.log", Level::Trace)
+    ///                     .build().expect("setup logger");
+    /// let reg = registry().with(fmt::layer().with_writer(std::io::stdout));
+    /// dispatcher::set_global_default(Dispatch::new(reg)).expect("init tracing");
+    /// tracing::trace!("trace with tracing {:?}", true);
+    /// let log_dispatch = logger.tracing_dispatch().unwrap();
+    /// dispatcher::with_default(&log_dispatch, || {
+    ///     tracing::info!("log from tracing in a scope");
+    /// });
+    /// ```
+    pub fn tracing_dispatch(&'static self) -> std::io::Result<Dispatch> {
+        if self.tracing_inited.load(Ordering::SeqCst) {
+            let e = Error::other("global tracing dispatcher exists");
+            eprintln!("{:?}", e);
+            return Err(e);
+        }
+        return Ok(Dispatch::new(tracing_subscriber::registry().with(CaptainsLogLayer::new(self))));
     }
 }
 
@@ -290,13 +431,13 @@ impl log::Log for GlobalLogger {
     fn log(&self, r: &log::Record) {
         let now = Timer::new();
         if let Some(inner) = self.inner.as_ref() {
-            match &inner {
-                LoggerInner::Once(inner) => {
+            match &inner.sinks {
+                LoggerInnerSink::Once(inner) => {
                     for sink in inner.iter() {
                         sink.log(&now, r);
                     }
                 }
-                LoggerInner::Dyn(inner) => {
+                LoggerInnerSink::Dyn(inner) => {
                     let sinks = inner.load();
                     for sink in sinks.iter() {
                         sink.log(&now, r);
@@ -315,13 +456,13 @@ impl log::Log for GlobalLogger {
     /// ```
     fn flush(&self) {
         if let Some(inner) = self.inner.as_ref() {
-            match &inner {
-                LoggerInner::Once(inner) => {
+            match &inner.sinks {
+                LoggerInnerSink::Once(inner) => {
                     for sink in inner.iter() {
                         sink.flush();
                     }
                 }
-                LoggerInner::Dyn(inner) => {
+                LoggerInnerSink::Dyn(inner) => {
                     let sinks = inner.load();
                     for sink in sinks.iter() {
                         sink.flush();

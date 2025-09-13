@@ -9,6 +9,8 @@
 //!
 //! * Allow customize log format and time format. Refer to [LogFormat].
 //!
+//! * Support [subscribing log from tracing](#tracing-support)  (**feature** `tracing`)
+//!
 //! * Supports multiple types of sink stacking, each with its own log level.
 //!
 //!     + [LogConsole]:  Console output to stdout/stderr.
@@ -52,29 +54,51 @@
 //!
 //! * Provides a [LogParser](crate::parser::LogParser) to work on your log files.
 //!
-//! ## Usage
+//! ## Usage and futures
 //!
 //! Cargo.toml
 //!
 //! ``` toml
 //! [dependencies]
 //! log = { version = "0.4", features = ["std", "kv_unstable"] }
-//! captains_log = "0.10"
+//! captains_log = "0.11"
 //! ```
 //!
 //! lib.rs or main.rs:
 //!
 //! ``` rust
-//!
 //! // By default, reexport the macros from log crate
 //! #[macro_use]
 //! extern crate captains_log;
-//!
 //! ```
 //!
-//! ## Fast setup examples
+//! **Optional feature flags**:
+//!
+//!- `syslog`: Enable [Syslog] sink
+//!
+//!- `ringfile`: Enable [LogRingFile] sink
+//!
+//!- `tracing`: Receive log from tracing
+//!
+//! ## Recipes
 //!
 //! You can refer to various preset recipe in [recipe] module.
+//!
+//! Buffered sink with log rotation (See the definition of [Rotation]):
+//!
+//! ``` rust
+//! #[macro_use]
+//! extern crate captains_log;
+//! use captains_log::*;
+//! // rotate when log file reaches 512M. Keep max 10 archiveed files, with recent 2 not compressed.
+//! // All archived log is moved to "/tmp/rotation/old"
+//! let rotation = Rotation::by_size(
+//!         512 * 1024 * 1024, Some(10))
+//!     .compress_exclude(2).archive_dir("/tmp/rotation/old");
+//! let _ = recipe::buffered_rotated_file_logger(
+//!             "/tmp/rotation.log", Level::Debug, rotation
+//! ).build();
+//! ```
 //!
 //! The following is setup two log files for different log-level:
 //!
@@ -94,18 +118,38 @@
 //! error!("Engine over heat!");
 //! ```
 //!
-//! Buffered sink with log rotation (See the definition of [Rotation]):
+//! ## Tracing support
+//!
+//! If you want to log tracing events (either in your code or 3rd-party crate), just enable the **`tracing` feature**.
+//!
+//! The message from tracing will use the same log format as defined in [LogFormat].
+//!
+//! We suggest you should **opt out `tracing-log` from default feature-flag of `tracing_subscriber`**,
+//! as it will conflict with captains-log. (It's not allowed to call `log::set_logger()` twice)
+//!
+//! 1) Set global dispatcher (recommended)
+//!
+//! Just turn of the flag `tracing_global` in [Builder], then it will setup [GlobalLogger] as the
+//! default Subscriber.
+//!
+//! Error will be thrown by build() if other default subscribe has been set in tracing.
 //!
 //! ``` rust
-//! #[macro_use]
-//! extern crate captains_log;
 //! use captains_log::*;
-//! // rotate when log file reaches 512M. Keep max 10 archiveed files, with recent 2 not compressed.
-//! // All archived log is moved to "/tmp/rotation/old"
-//! let rotation = Rotation::by_size(512 * 1024 * 1024, Some(10))
-//!     .compress_exclude(2).archive_dir("/tmp/rotation/old");
-//! let _ = recipe::buffered_rotated_file_logger("/tmp/rotation.log", Level::Debug, rotation).build();
+//! recipe::raw_file_logger("/tmp/mylog.log", Level::Debug)
+//!                     .tracing_global()
+//!                    .build().expect("setup log");
 //! ```
+//!
+//! 2) Stacking multiple layers
+//!
+//! you can choose this method when you need 3rd-party layer
+//! implementation. See the doc of [GlobalLogger::tracing_layer()]
+//!
+//! 3) Subscribe to tracing in the scope (alternative).
+//!
+//! Assume you have a different tracing global dispatcher, but want to output to captains_log in
+//! the scope. See the doc of [GlobalLogger::tracing_dispatch()]
 //!
 //! ## Configure by environment
 //!
@@ -114,7 +158,7 @@
 //!
 //! ``` rust
 //! use captains_log::recipe;
-//! let _ = recipe::env_logger("LOG_FILE", "LOG_LEVEL").build();
+//! recipe::env_logger("LOG_FILE", "LOG_LEVEL").build().expect("setup log");
 //! ```
 //!
 //! If you want to custom more, setup your config with [env_or] helper.
@@ -137,7 +181,8 @@
 //!     format_f,
 //! );
 //! let debug_file = LogRawFile::new(
-//!     "/tmp", "test.log", log::Level::Trace, debug_format);
+//!     "/tmp", "test.log", log::Level::Trace, debug_format,
+//! );
 //! let config = Builder::default()
 //!     .signal(signal_hook::consts::SIGINT)
 //!     .add_sink(debug_file);
@@ -182,9 +227,11 @@
 //!     let req_id = r.key("req_id");
 //!     format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
 //! }
-//! let builder = recipe::raw_file_logger_custom("/tmp/log_filter.log", log::Level::Debug,
-//!     recipe::DEFAULT_TIME, debug_format_req_id_f);
-//! builder.build().expect("setup_log");
+//! let builder = recipe::raw_file_logger_custom(
+//!                 "/tmp/log_filter.log", log::Level::Debug,
+//!                 recipe::DEFAULT_TIME, debug_format_req_id_f)
+//!     .build().expect("setup log");
+//!
 //! let logger = LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
 //! info!("API service started");
 //! logger_debug!(logger, "Req / received");
@@ -215,14 +262,14 @@
 //! #[test]
 //! fn test1() {
 //!     recipe::raw_file_logger(
-//!         "/tmp/test1.log", Level::Debug).test().build();
+//!         "/tmp/test1.log", Level::Debug).test().build().expect("setup log");
 //!     info!("doing test1");
 //! }
 //!
 //! #[test]
 //! fn test2() {
 //!     recipe::raw_file_logger(
-//!         "/tmp/test2.log", Level::Debug).test().build();
+//!         "/tmp/test2.log", Level::Debug).test().build().expect("setup log");
 //!     info!("doing test2");
 //! }
 //! ```
@@ -246,8 +293,9 @@
 //! // In order make logs available.
 //! #[fixture]
 //! fn setup() {
-//!     let builder = recipe::raw_file_logger("/tmp/log_rstest.log", log::Level::Debug).test();
-//!     builder.build().expect("setup_log");
+//!     let _logger = recipe::raw_file_logger(
+//!         "/tmp/log_rstest.log", log::Level::Debug)
+//!         .test().build().expect("setup_log");
 //! }
 //!
 //! #[logfn]
@@ -337,8 +385,18 @@ pub use self::console_impl::*;
 pub use self::env::*;
 pub use self::file_impl::*;
 pub use self::rotation::*;
-pub use self::{config::*, formatter::FormatRecord, log_filter::*, log_impl::setup_log};
+pub use self::{
+    config::*,
+    formatter::FormatRecord,
+    log_filter::*,
+    log_impl::{get_global_logger, setup_log, GlobalLogger},
+};
 pub use captains_log_helper::logfn;
+
+#[cfg(feature = "tracing")]
+mod tracing_bridge;
+#[cfg(feature = "tracing")]
+pub use tracing_bridge::CaptainsLogLayer;
 
 /// Re-export log::Level:
 pub use log::Level;
@@ -348,6 +406,3 @@ pub use log::{debug, error, info, trace, warn};
 
 /// Re-export from signal_hook::consts:
 pub use signal_hook::consts::signal as signal_consts;
-
-#[cfg(test)]
-mod tests;

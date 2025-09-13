@@ -1,7 +1,7 @@
 use crate::log_impl::setup_log;
 use crate::{
     formatter::{FormatRecord, TimeFormatter},
-    log_impl::{LogSink, LogSinkTrait},
+    log_impl::{GlobalLogger, LogSink, LogSinkTrait},
     time::Timer,
 };
 use log::{Level, LevelFilter, Record};
@@ -31,7 +31,12 @@ pub struct Builder {
     pub continue_when_panic: bool,
 
     /// Different types of log sink
-    pub(crate) sinks: Vec<Box<dyn SinkConfigTrait>>,
+    pub sinks: Vec<Box<dyn SinkConfigTrait>>,
+
+    /// subscribe to tracing as global dispatcher
+    #[cfg(feature = "tracing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tracing")))]
+    pub tracing_global: bool,
 }
 
 impl Builder {
@@ -39,8 +44,18 @@ impl Builder {
         Self::default()
     }
 
+    /// subscribe to tracing as global dispatcher
+    #[cfg(feature = "tracing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tracing")))]
+    #[inline]
+    pub fn tracing_global(mut self) -> Self {
+        self.tracing_global = true;
+        self
+    }
+
     /// For test cases, set dynamic=true and turn Off signal.
     /// Call this with pre-set recipe for convenient.
+    #[inline]
     pub fn test(mut self) -> Self {
         self.dynamic = true;
         self.rotation_signals.clear();
@@ -48,18 +63,21 @@ impl Builder {
     }
 
     /// Add log-rotate signal
+    #[inline]
     pub fn signal(mut self, signal: i32) -> Self {
         self.rotation_signals.push(signal);
         self
     }
 
     /// Add different types of log sink config, can be called multiple times.
+    #[inline]
     pub fn add_sink<S: SinkConfigTrait>(mut self, config: S) -> Self {
         self.sinks.push(Box::new(config));
         self
     }
 
     /// Return the max log level in the log sinks
+    #[inline]
     pub fn get_max_level(&self) -> LevelFilter {
         let mut max_level = Level::Error;
         for sink in &self.sinks {
@@ -72,6 +90,7 @@ impl Builder {
     }
 
     /// Calculate checksum of the setting for init() comparison
+    #[inline]
     pub(crate) fn cal_checksum(&self) -> u64 {
         let mut hasher = Box::new(DefaultHasher::new()) as Box<dyn Hasher>;
         self.dynamic.hash(&mut hasher);
@@ -84,13 +103,14 @@ impl Builder {
         hasher.finish()
     }
 
-    pub(crate) fn build_sinks(&self) -> Result<Vec<LogSink>, ()> {
+    #[inline]
+    pub(crate) fn build_sinks(&self) -> std::io::Result<Vec<LogSink>> {
         let mut sinks = Vec::new();
         for config in &self.sinks {
             let logger_sink = config.build();
             if let Err(e) = logger_sink.open() {
                 eprintln!("failed to open log sink: {:?}", e);
-                return Err(());
+                return Err(e);
             }
             sinks.push(logger_sink);
         }
@@ -103,7 +123,7 @@ impl Builder {
     /// **NOTE**: You can call this function multiple times when **builder.dynamic=true**,
     /// but **cannot mixed used captains_log with other logger implement**, because log::set_logger()
     /// cannot be called twice.
-    pub fn build(self) -> Result<(), ()> {
+    pub fn build(self) -> std::io::Result<&'static GlobalLogger> {
         setup_log(self)
     }
 }
