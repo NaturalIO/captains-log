@@ -13,11 +13,11 @@ docs.rs: [![docs.rs][docsrs-image]][docsrs]
 
 ## Features
 
-* Allow customize log format and time format. Refer to `LogFormat`
+* Allow customize log format and time format. Refer to [LogFormat](https://docs.rs/captains-log/latest/captains_log/struct.LogFormat.html)
 
 * Dynamic reconfigurable.
 
-* Support [subscribing span and event log](https://docs.rs/captains-log/latest/captains_log#tracing-support) from `tracing` (**feature** `tracing`) with consistent format:
+* Support [subscribing span and event log](https://docs.rs/captains-log/latest/captains_log/ringfile) from `tracing` (**feature** `tracing`) with consistent format:
 
     + global default subscriber mode
 
@@ -52,16 +52,9 @@ docs.rs: [![docs.rs][docsrs-image]][docsrs]
 
 * Supports configured by environment
 
-* Fine-grain module-level control.
+* Fine-grain module-level control and API-level log handling.
 
-  Provides [LogFilter](https://docs.rs/captains-log/latest/captains_log/struct.LogFilter.html) to filter specified logs on-the-fly.
-
-* API-level log handling.
-
-  Provides [LogFilterKV](https://docs.rs/captains-log/latest/captains_log/struct.LogFilterKV.html) for API logging with additional key.
-
-  For example, you can set `req_id` in `LogFilterKV`, and track the
-complete request handling procedure from log.
+  Provides `LogFilter` and `LogFilterKV`  to filter specified logs on-the-fly. Refer to [doc](https://docs.rs/captains-log/latest/captains_log/filter)
 
 * For test suits usage:
 
