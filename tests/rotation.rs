@@ -1,9 +1,11 @@
-use super::utils::*;
-use crate::*;
+use captains_log::*;
 use log::*;
 use rstest::*;
 use std::fs::*;
 use std::path::Path;
+
+mod common;
+use common::*;
 
 const TEST_DIR: &'static str = "/tmp/captains_log/";
 

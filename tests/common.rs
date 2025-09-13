@@ -1,8 +1,9 @@
-use crate::{parser::LogParser, Builder};
+use captains_log::{parser::LogParser, Builder};
 use std::fs::remove_file;
 
 pub const TEST_LOCK_FILE: &str = "/tmp/natualio_test_lock";
 
+#[macro_export]
 macro_rules! lock_file {
     () => {
         // NOTE: use one {} to expose the guard into context
@@ -10,8 +11,8 @@ macro_rules! lock_file {
         let _guard = fmutex::lock_exclusive(&lock_fd).unwrap();
     };
 }
-pub(super) use lock_file;
 
+#[allow(dead_code)]
 pub fn clear_test_files(builder: &Builder) {
     for sink in &builder.sinks {
         if let Some(file_path) = sink.get_file_path() {
@@ -20,6 +21,7 @@ pub fn clear_test_files(builder: &Builder) {
     }
 }
 
+#[allow(dead_code)]
 pub fn parse_log(file_path: &str, re: &str) -> std::io::Result<Vec<Vec<String>>> {
     let parser = LogParser::new(file_path, re, 1024)?;
     let mut lines = Vec::with_capacity(1024);

@@ -1,6 +1,4 @@
-use super::utils::*;
-use log::*;
-use std::fs::OpenOptions;
+use captains_log::*;
 use std::panic;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -8,10 +6,10 @@ use std::sync::{
 };
 use std::thread;
 
+#[cfg(feature = "ringfile")]
 #[test]
 fn test_ringfile_assert() {
-    lock_file!();
-    crate::recipe::ring_file("/tmp/ring.log", 10240, Level::Debug, crate::signal_consts::SIGINT)
+    recipe::ring_file("/tmp/ring.log", 10240, Level::Debug, crate::signal_consts::SIGINT)
         .build()
         .expect("setup");
     let counter = Arc::new(AtomicUsize::new(0));

@@ -1,14 +1,10 @@
-use super::utils::lock_file;
-use super::utils::*;
-use crate::recipe;
-use crate::{recipe::split_error_file_logger, setup_log, FormatRecord, LogFilter, LogFilterKV};
+use captains_log::{recipe::split_error_file_logger, *};
 use regex::Regex;
 use std::fs::*;
 use std::panic;
 
-use log::*;
-
-use crate::macros::*;
+mod common;
+use common::*;
 
 const RE_DEBUG: &str = r"^\[(.+)\]\[(\w+)\]\[(.+)\:(\d+)\] (.+)$";
 

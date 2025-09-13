@@ -1,11 +1,9 @@
-use super::utils::*;
-use crate::macros::*;
-use log::*;
+use captains_log::{recipe::split_error_file_logger, *};
 use regex::Regex;
 use std::fs::*;
 use std::panic;
-
-use crate::{recipe, recipe::split_error_file_logger};
+mod common;
+use common::*;
 
 const RE_DEBUG: &str = r"^\[(.+)\]\[(\w+)\]\[(.+)\:(\d+)\] (.+)$";
 
@@ -36,7 +34,7 @@ fn test_global_log_file() {
     let debug_logs = parse_log("/tmp/log_test.log", RE_DEBUG).expect("parse log");
     assert_eq!(debug_logs.len(), 3);
     assert_eq!(debug_logs[0][2], "DEBUG");
-    assert_eq!(debug_logs[0][3], "test_global_log.rs");
+    assert_eq!(debug_logs[0][3], "global_log.rs");
     assert_eq!(debug_logs[0][5], "test1 debug");
     assert_eq!(debug_logs[1][2], "INFO");
     assert_eq!(debug_logs[1][5], "test2");
@@ -303,21 +301,5 @@ fn test_global_log_debug_assert_eq_with_msg() {
         assert!(r.is_ok());
         let debug_logs = parse_log("/tmp/log_test.log", RE_DEBUG).expect("parse log");
         assert_eq!(debug_logs.len(), 0);
-    }
-}
-
-#[cfg(feature = "syslog")]
-#[test]
-fn test_syslog() {
-    let _ = recipe::syslog_local(Level::Debug).test().build().expect("setup");
-    info!("begin syslog test");
-    for _ in 0..20 {
-        trace!("test syslog trace");
-        debug!("test syslog debug");
-        info!("test syslog info");
-        warn!("test syslog warn");
-        error!("test syslog error");
-        println!("sleep");
-        std::thread::sleep(std::time::Duration::from_secs(1));
     }
 }
