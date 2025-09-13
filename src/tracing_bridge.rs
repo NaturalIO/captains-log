@@ -1,3 +1,62 @@
+//! # Tracing support
+//!
+//! If you want to log tracing events (either in your code or 3rd-party crate), just enable the **`tracing` feature**.
+//!
+//! The message from tracing will use the same log format as defined in [crate::LogFormat].
+//!
+//! We suggest you should **opt out `tracing-log` from default feature-flag of `tracing_subscriber`**,
+//! as it will conflict with captains-log. (It's not allowed to call `log::set_logger()` twice)
+//!
+//! ## Set global dispatcher (recommended)
+//!
+//! Just turn on the flag `tracing_global` in [crate::Builder], then it will setup [GlobalLogger] as the
+//! default Subscriber.
+//!
+//! Error will be thrown by build() if other default subscribe has been set in tracing.
+//!
+//! ``` rust
+//! use captains_log::*;
+//! recipe::raw_file_logger("/tmp/mylog.log", Level::Debug)
+//!                     .tracing_global()
+//!                    .build().expect("setup log");
+//! ```
+//!
+//! ## Stacking multiple layers (alternative)
+//!
+//! you can choose this method when you need 3rd-party layer
+//! implementation.
+//!
+//! ```
+//! use captains_log::*;
+//! use tracing::{dispatcher, Dispatch};
+//! use tracing_subscriber::{fmt, registry, prelude::*};
+//! let logger = recipe::raw_file_logger("/tmp/tracing.log", Level::Trace)
+//!                     .build().expect("setup logger");
+//! let reg = registry().with(fmt::layer().with_writer(std::io::stdout))
+//!     .with(logger.tracing_layer().unwrap());
+//! dispatcher::set_global_default(Dispatch::new(reg)).expect("init tracing");
+//! ```
+//!
+//! ## Subscribe to tracing in the scope (rarely used).
+//!
+//! Assume you have a different tracing global dispatcher,
+//! and want to output to captains_log only in the scope.
+//! ```
+//! use captains_log::*;
+//! use tracing::{dispatcher, Dispatch};
+//! use tracing_subscriber::{fmt, registry, prelude::*};
+//!
+//! let logger = recipe::raw_file_logger("/tmp/tracing.log", Level::Trace)
+//!                     .build().expect("setup logger");
+//! let reg = registry().with(fmt::layer().with_writer(std::io::stdout));
+//! dispatcher::set_global_default(Dispatch::new(reg)).expect("init tracing");
+//! tracing::trace!("trace with tracing {:?}", true);
+//! let log_dispatch = logger.tracing_dispatch().unwrap();
+//! dispatcher::with_default(&log_dispatch, || {
+//!     tracing::info!("log from tracing in a scope");
+//! });
+//! ```
+
 use crate::log::Log;
 use crate::log_impl::GlobalLogger;
 use log::Record;

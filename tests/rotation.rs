@@ -1,4 +1,4 @@
-use captains_log::*;
+use captains_log::{rotation::*, *};
 use log::*;
 use rstest::*;
 use std::fs::*;

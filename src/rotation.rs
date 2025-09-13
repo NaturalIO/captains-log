@@ -1,3 +1,23 @@
+//! ## Rotation configuration
+//!
+//! Config can be divided into these dimensions:
+//!
+//! * How to trigger log-rotate:
+//!
+//!     - [Rotation::by_age()]: File name will be configurable time_fmt
+//!
+//!     - [Rotation::by_age_and_size()]
+//!
+//!     - [Rotation::by_size()]: File name will be configurable time_fmt
+//!
+//! * Where to archive: Optional directory to move the file into.
+//!
+//! * How the cleanup the file:
+//!
+//!     - [Upkeep]
+//!
+//!     - [Rotation::compress_exclude]
+//!
 use file_rotate::compression::Compression;
 use file_rotate::suffix::{
     AppendCount, AppendTimestamp, DateFrom, FileLimit, Representation, SuffixScheme,
@@ -33,6 +53,7 @@ pub struct ByAge {
     pub use_last_time: bool,
 }
 
+/// Define how to cleanup old files
 #[derive(Hash, Clone, Copy, PartialEq)]
 pub enum Upkeep {
     /// Log file  older than the duration will be deleted.

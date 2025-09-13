@@ -1,3 +1,14 @@
+/// ## Configure by environment
+///
+/// There is a recipe [env_logger()](crate::recipe::env_logger()) to configure a file logger or
+/// console logger from env. As simple as:
+///
+/// ``` rust
+/// use captains_log::recipe;
+/// recipe::env_logger("LOG_FILE", "LOG_LEVEL").build().expect("setup log");
+/// ```
+///
+/// If you want to custom more, setup your config with [env_or] helper.
 use log::Level;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -28,7 +39,7 @@ macro_rules! impl_from_env {
     };
 }
 
-/// An intermedium type for [crate::env_or()], parsing environment with default values.
+/// An intermedium type for [env_or()], parsing environment with default values.
 pub struct EnvVarDefault<'a, T> {
     pub(crate) name: &'a str,
     pub(crate) default: T,
@@ -43,7 +54,7 @@ pub struct EnvVarDefault<'a, T> {
 /// Example:
 ///
 /// ```rust
-/// use captains_log::*;
+/// use captains_log::{*, env::env_or};
 /// let _level: log::Level = env_or("LOG_LEVEL", Level::Info).into();
 /// let _file_path: String = env_or("LOG_FILE", "/tmp/test.log").into();
 /// let _console: ConsoleTarget = env_or("LOG_CONSOLE", ConsoleTarget::Stdout).into();

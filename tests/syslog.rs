@@ -3,9 +3,12 @@ use captains_log::*;
 #[cfg(feature = "syslog")]
 #[test]
 fn test_syslog() {
-    let _ = recipe::syslog_local(Level::Debug).test().build().expect("setup");
+    let _ = recipe::syslog_local(syslog::Facility::LOG_USER, Level::Debug)
+        .test()
+        .build()
+        .expect("setup");
     info!("begin syslog test");
-    for _ in 0..20 {
+    for _ in 0..10 {
         trace!("test syslog trace");
         debug!("test syslog debug");
         info!("test syslog info");

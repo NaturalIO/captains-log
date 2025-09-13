@@ -94,7 +94,7 @@ pub fn stderr_logger(max_level: Level) -> Builder {
 /// let _ = recipe::env_logger("LOG_FILE", "LOG_LEVEL").build();
 /// ```
 pub fn env_logger(file_env_name: &str, level_env_name: &str) -> Builder {
-    let level: Level = env_or(level_env_name, Level::Info).into();
+    let level: Level = crate::env::env_or(level_env_name, Level::Info).into();
     let mut console: Option<ConsoleTarget> = None;
     if let Ok(file_path) = std::env::var(file_env_name) {
         if let Ok(target) = ConsoleTarget::from_str(file_path.as_str()) {
@@ -184,7 +184,7 @@ where
 ///     - the max value is 1000 (1 sec).
 pub fn buffered_file_logger_custom<P: Into<PathBuf>>(
     file_path: P, max_level: Level, time_fmt: &'static str, format_func: FormatFunc,
-    flush_millis: usize, rotate: Option<Rotation>,
+    flush_millis: usize, rotate: Option<crate::rotation::Rotation>,
 ) -> Builder {
     let format = LogFormat::new(time_fmt, format_func);
     let _file_path = file_path.into();
@@ -219,7 +219,7 @@ pub fn buffered_file_logger<P: Into<PathBuf>>(file_path: P, max_level: Level) ->
 ///
 /// - `rotation`: rotation and archive strategy
 pub fn buffered_rotated_file_logger<P: Into<PathBuf>>(
-    file_path: P, max_level: Level, rotation: Rotation,
+    file_path: P, max_level: Level, rotation: crate::rotation::Rotation,
 ) -> Builder {
     buffered_file_logger_custom(
         file_path,
@@ -234,13 +234,12 @@ pub fn buffered_rotated_file_logger<P: Into<PathBuf>>(
 /// Output to local syslog
 #[cfg(feature = "syslog")]
 #[cfg_attr(docsrs, doc(cfg(feature = "syslog")))]
-pub fn syslog_local(max_level: Level) -> Builder {
-    use crate::Facility;
-    let syslog = crate::Syslog::new(Facility::LOG_USER, max_level);
+pub fn syslog_local(facility: syslog::Facility, max_level: Level) -> Builder {
+    let syslog = syslog::Syslog::new(facility, max_level);
     return Builder::default().add_sink(syslog);
 }
 
-/// Initialize a ring buffer to hold the log. For complete usage, refer to the description of [LogRingFile].
+/// Initialize a ring buffer to hold the log. For complete usage, refer to the doc in [ringfile].
 ///
 /// # NOTE:
 /// the recipe already register signal and dynamic=true, **do not use test()** here,
@@ -260,7 +259,8 @@ pub fn syslog_local(max_level: Level) -> Builder {
 pub fn ring_file<P: Into<PathBuf>>(
     file_path: P, buf_size: i32, max_level: Level, dump_signal: i32,
 ) -> Builder {
-    let ring = crate::LogRingFile::new(file_path, buf_size, max_level, LOG_FORMAT_THREADED_DEBUG);
+    let ring =
+        ringfile::LogRingFile::new(file_path, buf_size, max_level, LOG_FORMAT_THREADED_DEBUG);
     let mut config = Builder::default().signal(dump_signal).add_sink(ring);
     config.dynamic = true;
     config

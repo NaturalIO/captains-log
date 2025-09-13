@@ -1,3 +1,40 @@
+//! # Syslog support
+//!
+//! Config for syslog output, supports local and remote server.
+//!
+//! The underlayer protocol is implemented by [syslog](https://docs.rs/syslog) crate,
+//! currently Formatter3164 is adapted.
+//!
+//! In order to achieve efficient socket I/O, the message is sent to channel,
+//! and asynchronous flushed by backend writer.
+//!
+//! **When your program shutting down, should call flush to ensure the log is written to the socket.**
+//!
+//! ``` rust
+//! log::logger().flush();
+//! ```
+//! On panic, our panic hook will call `flush()` explicitly.
+//!
+//! On connection, will output "syslog connected" message to stdout.
+//!
+//! On remote syslog server failure, will not panic, only "syslog: flush err" message will be print
+//! to stderr, the backend thread will automatically reconnect to server.
+//! In order to prevent hang up, the message will be dropped after a timeout.
+//!
+//! ## connect to local server
+//!
+//! ``` rust
+//! use captains_log::{*, syslog::Facility};
+//! recipe::syslog_local(Facility::LOG_USER, Level::Debug).build().expect("log_setup");
+//! ```
+//! ## connect to remote server
+//!
+//! ``` rust
+//! use captains_log::{*, syslog::*};
+//! let syslog = Syslog::new(Facility::LOG_USER, Level::Info).tcp("10.10.0.1:601");
+//! let _ = Builder::default().add_sink(syslog).build();
+//! ```
+
 use crate::{
     config::{SinkConfigBuild, SinkConfigTrait},
     log_impl::{LogSink, LogSinkTrait},
@@ -42,45 +79,7 @@ pub enum SyslogAddr {
     Unix(PathBuf),
 }
 
-/// Config for syslog output, supports local and remote server.
-///
-/// The underlayer protocol is implemented by [syslog](https://docs.rs/syslog) crate,
-/// currently Formatter3164 is adapted.
-///
-/// In order to achieve efficient socket I/O, the message is sent to channel,
-/// and asynchronous flushed by backend writer.
-///
-/// **When your program shutting down, should call flush to ensure the log is written to the socket.**
-///
-/// ``` rust
-/// log::logger().flush();
-/// ```
-/// On panic, our panic hook will call `flush()` explicitly.
-///
-/// On connection, will output "syslog connected" message to stdout.
-///
-/// On remote syslog server failure, will not panic, only "syslog: flush err" message will be print
-/// to stderr, the backend thread will automatically reconnect to server.
-/// In order to prevent hang up, the message will be dropped after a timeout.
-///
-/// # Example connecting local server
-///
-/// Source of [crate::recipe::syslog_local()]
-///
-/// ``` rust
-/// use captains_log::*;
-/// pub fn syslog_local(max_level: Level) -> Builder {
-///     let syslog = Syslog::new(Facility::LOG_USER, max_level);
-///     return Builder::default().add_sink(syslog);
-/// }
-/// ```
-/// # Example connecting remote server
-///
-/// ``` rust
-/// use captains_log::*;
-/// let syslog = Syslog::new(Facility::LOG_USER, Level::Info).tcp("10.10.0.1:601");
-/// let _ = Builder::default().add_sink(syslog).build();
-/// ```
+/// Config for syslog sink, see [module level doc](crate::syslog) for usage:
 pub struct Syslog {
     /// Syslog facility
     pub facility: Facility,

@@ -10,7 +10,7 @@
 //!
 //! * Allow customize log format and time format. Refer to [LogFormat].
 //!
-//! * Support [subscribing log from tracing](#tracing-support)  (**feature** `tracing`)
+//! * Support subscribe log from tracing: (feature `tracing`). Refer to [tracing_bridge].
 //!
 //! * Supports multiple types of sink stacking, each with its own log level.
 //!
@@ -20,28 +20,26 @@
 //!
 //!     + [LogBufFile]:  Write to log file with merged I/O and delay flush, and optional self-rotation.
 //!
-//!     + [Syslog]: (**feature** `syslog`)
+//!     + `Syslog`: (feature `syslog`), usage: [syslog]
 //!
 //!         Write to local or remote syslog server, with timeout and auto reconnect.
 //!
-//!     + [LogRingFile]: (**feature** `ringfile`)
+//!     + `LogRingFile`: (feature `ringfile`), usage: [ringfile]
 //!
-//!         For deadlock / race condition debugging,
-//!         collect log to ring buffer in memory. See the doc of [LogRingFile] for how to use.
+//!         For deadlock / race condition debugging, collect log to ring buffer in memory, flush on
+//!         panic, or triggered by signal.
 //!
-//! * Log panic message by default.
+//! * Provide panic hook by default.
 //!
 //! * Provide additional [macros](#macros), for example: log_assert!(), logger_assert!() ..
 //!
 //! * Supports signal listening for log-rotate. Refer to [Builder::signal()]
 //!
-//! * Provides many preset recipes in [recipe] module for convenience.
+//! * Provides many preset **recipes** in [recipe] module for convenience.
 //!
-//! * [Supports configure by environment](#configure-by-environment)
+//! * Supports configure by [environment](crate::env)
 //!
-//! * [Fine-grain module-level control](#fine-grain-module-level-control)
-//!
-//! * [API-level log handling](#api-level-log-handling)
+//! * Fine-grain log filtering. By functionality, or track the log by API request. Refer to [crate::filter]
 //!
 //! * For test suits usage:
 //!
@@ -55,14 +53,14 @@
 //!
 //! * Provides a [LogParser](crate::parser::LogParser) to work on your log files.
 //!
-//! ## Usage and futures
+//! ## Usage
 //!
 //! Cargo.toml
 //!
 //! ``` toml
 //! [dependencies]
 //! log = { version = "0.4", features = ["std", "kv_unstable"] }
-//! captains_log = "0.11"
+//! captains_log = "0.12"
 //! ```
 //!
 //! lib.rs or main.rs:
@@ -75,9 +73,9 @@
 //!
 //! **Optional feature flags**:
 //!
-//!- `syslog`: Enable [Syslog] sink
+//!- `syslog`: Enable [Syslog](crate::syslog::Syslog) sink
 //!
-//!- `ringfile`: Enable [LogRingFile] sink
+//!- `ringfile`: Enable [RingFile](crate::ringfile::LogRingFile) sink
 //!
 //!- `tracing`: Receive log from tracing
 //!
@@ -85,19 +83,18 @@
 //!
 //! You can refer to various preset recipe in [recipe] module.
 //!
-//! Buffered sink with log rotation (See the definition of [Rotation]):
+//! Buffered sink with log rotation (See the definition of [rotation::Rotation]):
 //!
 //! ``` rust
 //! #[macro_use]
 //! extern crate captains_log;
-//! use captains_log::*;
+//! use captains_log::{*, rotation::*};
 //! // rotate when log file reaches 512M. Keep max 10 archiveed files, with recent 2 not compressed.
 //! // All archived log is moved to "/tmp/rotation/old"
-//! let rotation = Rotation::by_size(
-//!         512 * 1024 * 1024, Some(10))
+//! let rotation = Rotation::by_size(512 * 1024 * 1024, Some(10))
 //!     .compress_exclude(2).archive_dir("/tmp/rotation/old");
 //! let _ = recipe::buffered_rotated_file_logger(
-//!             "/tmp/rotation.log", Level::Debug, rotation
+//!     "/tmp/rotation.log", Level::Debug, rotation
 //! ).build();
 //! ```
 //!
@@ -118,51 +115,6 @@
 //! // will appear in both /tmp/test.log and /tmp/test.log.wf
 //! error!("Engine over heat!");
 //! ```
-//!
-//! ## Tracing support
-//!
-//! If you want to log tracing events (either in your code or 3rd-party crate), just enable the **`tracing` feature**.
-//!
-//! The message from tracing will use the same log format as defined in [LogFormat].
-//!
-//! We suggest you should **opt out `tracing-log` from default feature-flag of `tracing_subscriber`**,
-//! as it will conflict with captains-log. (It's not allowed to call `log::set_logger()` twice)
-//!
-//! 1) Set global dispatcher (recommended)
-//!
-//! Just turn of the flag `tracing_global` in [Builder], then it will setup [GlobalLogger] as the
-//! default Subscriber.
-//!
-//! Error will be thrown by build() if other default subscribe has been set in tracing.
-//!
-//! ``` rust
-//! use captains_log::*;
-//! recipe::raw_file_logger("/tmp/mylog.log", Level::Debug)
-//!                     .tracing_global()
-//!                    .build().expect("setup log");
-//! ```
-//!
-//! 2) Stacking multiple layers (alternative)
-//!
-//! you can choose this method when you need 3rd-party layer
-//! implementation. See the doc of [GlobalLogger::tracing_layer()]
-//!
-//! 3) Subscribe to tracing in the scope (rarely used).
-//!
-//! Assume you have a different tracing global dispatcher, but want to output to captains_log in
-//! the scope. See the doc of [GlobalLogger::tracing_dispatch()]
-//!
-//! ## Configure by environment
-//!
-//! There is a recipe [env_logger()](crate::recipe::env_logger()) to configure a file logger or
-//! console logger from env. As simple as:
-//!
-//! ``` rust
-//! use captains_log::recipe;
-//! recipe::env_logger("LOG_FILE", "LOG_LEVEL").build().expect("setup log");
-//! ```
-//!
-//! If you want to custom more, setup your config with [env_or] helper.
 //!
 //! ## Customize format example
 //!
@@ -189,66 +141,6 @@
 //!     .add_sink(debug_file);
 //! config.build();
 //! ```
-//!
-//! ## Fine-grain module-level control
-//!
-//! Place [LogFilter] in Arc and share among coroutines.
-//! Log level can be changed on-the-fly.
-//!
-//! There're a set of macro "logger_XXX" to work with `LogFilter`.
-//!
-//! ``` rust
-//! use std::sync::Arc;
-//! use captains_log::*;
-//! log::set_max_level(log::LevelFilter::Debug);
-//! let logger_io = Arc::new(LogFilter::new());
-//! let logger_req = Arc::new(LogFilter::new());
-//! logger_io.set_level(log::Level::Error);
-//! logger_req.set_level(log::Level::Debug);
-//! logger_debug!(logger_req, "Begin handle req ...");
-//! logger_debug!(logger_io, "Issue io to disk ...");
-//! logger_error!(logger_req, "Req invalid ...");
-//! ```
-//!
-//!
-//! ## API-level log handling
-//!
-//! Request log can be track by customizable key (for example, "req_id"), which kept in [LogFilterKV],
-//! and `LogFilterKV` is inherit from `LogFilter`.
-//! You need macro "logger_XXX" to work with it.
-//!
-//! ``` rust
-//! use captains_log::*;
-//! fn debug_format_req_id_f(r: FormatRecord) -> String {
-//!     let time = r.time();
-//!     let level = r.level();
-//!     let file = r.file();
-//!     let line = r.line();
-//!     let msg = r.msg();
-//!     let req_id = r.key("req_id");
-//!     format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
-//! }
-//! let builder = recipe::raw_file_logger_custom(
-//!                 "/tmp/log_filter.log", log::Level::Debug,
-//!                 recipe::DEFAULT_TIME, debug_format_req_id_f)
-//!     .build().expect("setup log");
-//!
-//! let logger = LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
-//! info!("API service started");
-//! logger_debug!(logger, "Req / received");
-//! logger_debug!(logger, "header xxx");
-//! logger_info!(logger, "Req / 200 complete");
-//! ```
-//!
-//! The log will be:
-//!
-//! ``` text
-//! [2025-06-11 14:33:08.089090][DEBUG][request.rs:67] API service started
-//! [2025-06-11 14:33:10.099092][DEBUG][request.rs:67] Req / received (000000000000007b)
-//! [2025-06-11 14:33:10.099232][WARN][request.rs:68] header xxx (000000000000007b)
-//! [2025-06-11 14:33:11.009092][DEBUG][request.rs:67] Req / 200 complete (000000000000007b)
-//! ```
-//!
 //!
 //! ## Unit test example
 //!
@@ -354,50 +246,40 @@ extern crate enum_dispatch;
 mod buf_file_impl;
 mod config;
 mod console_impl;
-mod env;
+pub mod env;
 mod file_impl;
 mod formatter;
 mod log_impl;
-mod rotation;
+pub mod rotation;
 mod time;
 
 #[cfg(feature = "syslog")]
 #[cfg_attr(docsrs, doc(cfg(feature = "syslog")))]
-mod syslog;
-#[cfg(feature = "syslog")]
-#[cfg_attr(docsrs, doc(cfg(feature = "syslog")))]
-pub use self::syslog::*;
+pub mod syslog;
 
 #[cfg(feature = "ringfile")]
 #[cfg_attr(docsrs, doc(cfg(feature = "ringfile")))]
-mod ring;
-#[cfg(feature = "ringfile")]
-#[cfg_attr(docsrs, doc(cfg(feature = "ringfile")))]
-pub use self::ring::*;
+/// High speed Ring Buffer that maintained the message on memory
+pub mod ringfile;
 
 pub mod macros;
 pub mod parser;
 pub mod recipe;
 
-mod log_filter;
+pub mod filter;
 
 pub use self::buf_file_impl::*;
 pub use self::console_impl::*;
-pub use self::env::*;
 pub use self::file_impl::*;
-pub use self::rotation::*;
 pub use self::{
     config::*,
     formatter::FormatRecord,
-    log_filter::*,
     log_impl::{get_global_logger, setup_log, GlobalLogger},
 };
 pub use captains_log_helper::logfn;
 
 #[cfg(feature = "tracing")]
-mod tracing_bridge;
-#[cfg(feature = "tracing")]
-pub use tracing_bridge::CaptainsLogLayer;
+pub mod tracing_bridge;
 
 /// Re-export log::Level:
 pub use log::Level;

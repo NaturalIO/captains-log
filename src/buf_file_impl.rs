@@ -39,7 +39,7 @@ const FLUSH_SIZE_DEFAULT: usize = 4096;
 /// Source of [crate::recipe::buffered_file_logger_custom()]
 ///
 /// ``` rust
-/// use captains_log::*;
+/// use captains_log::{*, rotation::*};
 /// use std::path::{self, Path, PathBuf};
 ///
 /// pub fn buffered_file_logger_custom<P: Into<PathBuf>>(

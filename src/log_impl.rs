@@ -38,7 +38,7 @@ pub enum LogSink {
     #[cfg(feature = "syslog")]
     Syslog(crate::syslog::LogSinkSyslog),
     #[cfg(feature = "ringfile")]
-    RingFile(crate::ring::LogSinkRingFile),
+    RingFile(crate::ringfile::LogSinkRingFile),
 }
 
 struct GlobalLoggerStatic {
@@ -353,26 +353,12 @@ impl GlobalLogger {
     #[cfg_attr(docsrs, doc(cfg(feature = "tracing")))]
     /// Initialize a layer for tracing. Use this when you stacking multiple tracing layers.
     ///
+    /// For usage, checkout the doc in [crate::tracing_bridge]
+    ///
     /// # NOTE:
     ///
     /// In order to prevent duplicate output, it will fail if out tracing global subscriber
     /// has been initialized.
-    ///
-    /// We suggest you should opt out `tracing-log` from tracing_subscriber's default feature-flag,
-    /// or avoid calling init() in SubscriberInitExt trait,
-    /// otherwise it will failed when our logger detected in log::set_logger().
-    ///
-    /// # Example
-    /// ```
-    /// use captains_log::*;
-    /// use tracing::{dispatcher, Dispatch};
-    /// use tracing_subscriber::{fmt, registry, prelude::*};
-    /// let logger = recipe::raw_file_logger("/tmp/tracing.log", Level::Trace)
-    ///                     .build().expect("setup logger");
-    /// let reg = registry().with(fmt::layer().with_writer(std::io::stdout))
-    ///     .with(logger.tracing_layer().unwrap());
-    /// dispatcher::set_global_default(Dispatch::new(reg)).expect("init tracing");
-    /// ```
     pub fn tracing_layer(&'static self) -> std::io::Result<CaptainsLogLayer> {
         if self.tracing_inited.load(Ordering::SeqCst) {
             let e = Error::other("global tracing dispatcher exists");
@@ -386,31 +372,12 @@ impl GlobalLogger {
     #[cfg_attr(docsrs, doc(cfg(feature = "tracing")))]
     /// Initialize a tracing Dispatch, you can set_global_default() or use in a scope.
     ///
+    /// For usage, checkout the doc in [crate::tracing_bridge]
+    ///
     /// # NOTE:
     ///
     /// In order to prevent duplicate output, it will fail if out tracing global subscriber
     /// has been initialized.
-    ///
-    /// We suggest you should opt out `tracing-log` from tracing_subscriber's default feature-flag,
-    /// or avoid calling init() in SubscriberInitExt trait,
-    /// otherwise it will failed when our logger detected in log::set_logger().
-    ///
-    /// # Example
-    /// ```
-    /// use captains_log::*;
-    /// use tracing::{dispatcher, Dispatch};
-    /// use tracing_subscriber::{fmt, registry, prelude::*};
-    ///
-    /// let logger = recipe::raw_file_logger("/tmp/tracing.log", Level::Trace)
-    ///                     .build().expect("setup logger");
-    /// let reg = registry().with(fmt::layer().with_writer(std::io::stdout));
-    /// dispatcher::set_global_default(Dispatch::new(reg)).expect("init tracing");
-    /// tracing::trace!("trace with tracing {:?}", true);
-    /// let log_dispatch = logger.tracing_dispatch().unwrap();
-    /// dispatcher::with_default(&log_dispatch, || {
-    ///     tracing::info!("log from tracing in a scope");
-    /// });
-    /// ```
     pub fn tracing_dispatch(&'static self) -> std::io::Result<Dispatch> {
         if self.tracing_inited.load(Ordering::SeqCst) {
             let e = Error::other("global tracing dispatcher exists");

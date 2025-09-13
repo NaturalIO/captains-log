@@ -1,4 +1,4 @@
-use captains_log::{recipe::split_error_file_logger, *};
+use captains_log::{filter::*, recipe::split_error_file_logger, *};
 use regex::Regex;
 use std::fs::*;
 use std::panic;
