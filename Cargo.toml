@@ -9,9 +9,9 @@ documentation = "https://docs.rs/captains-log"
 keywords = ["logger", "logging", "log", "syslog"]
 license = "MIT"
 description = """
-A light-weight customizable logger which have concurrency in mind.
-Allow for multi-process/thread/coroutine programing,
-and can change log setting on the fly.
+A minimalist customizable logger for rust,
+ based on the `log` crate, but also adapted to `tracing`,
+for production and testing scenario.
 """
 
 [dependencies]

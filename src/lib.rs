@@ -3,7 +3,8 @@
 
 //! # captains-log
 //!
-//! A light-weight logger for rust, implementation base on the crate `log`.
+//! A minimalist, customizable, easy to use logger for rust, based on the `log` crate, also adapted to `tracing`,
+//! for production and testing scenario.
 //!
 //! ## Features
 //!
@@ -141,12 +142,12 @@
 //!                    .build().expect("setup log");
 //! ```
 //!
-//! 2) Stacking multiple layers
+//! 2) Stacking multiple layers (alternative)
 //!
 //! you can choose this method when you need 3rd-party layer
 //! implementation. See the doc of [GlobalLogger::tracing_layer()]
 //!
-//! 3) Subscribe to tracing in the scope (alternative).
+//! 3) Subscribe to tracing in the scope (rarely used).
 //!
 //! Assume you have a different tracing global dispatcher, but want to output to captains_log in
 //! the scope. See the doc of [GlobalLogger::tracing_dispatch()]
