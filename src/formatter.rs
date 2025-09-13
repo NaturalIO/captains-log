@@ -15,6 +15,7 @@ impl<'a> TimeFormatter<'a> {
     }
 }
 
+/// For accessing log `Record` in [crate::LogFormat]
 pub struct FormatRecord<'a> {
     pub record: &'a Record<'a>,
     pub time: TimeFormatter<'a>,

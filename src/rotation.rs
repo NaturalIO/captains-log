@@ -21,6 +21,7 @@ pub enum Age {
     Hour,
 }
 
+/// Define the time to rotate files.
 #[derive(Hash, Clone, Copy, PartialEq)]
 pub struct ByAge {
     /// Rotate the file by day / hour.

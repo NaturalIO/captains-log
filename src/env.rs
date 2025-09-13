@@ -28,6 +28,7 @@ macro_rules! impl_from_env {
     };
 }
 
+/// An intermedium type for [crate::env_or()], parsing environment with default values.
 pub struct EnvVarDefault<'a, T> {
     pub(crate) name: &'a str,
     pub(crate) default: T,
