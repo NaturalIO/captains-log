@@ -15,13 +15,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.11.0] 2025-09-13
+
+### Added
+
+- Expose GlobalLogger, add get_global_logger().
+
+- Add tracing support, 3 modes: global / layer / scope
+
+### Changed
+
+- Do not panic when reconfig with dynamic=false, return error instead.
+
 ## [0.10.0] 2025-09-08
 
 ### Changed
 
 -  RingFile: Refactor, because in previous impl different thread might produce different amount of data,
  leaving some holes in the final dump.
-
 
 ## [0.9.4] 2025-09-08
 
