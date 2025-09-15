@@ -74,6 +74,11 @@ where
 {
     /// This is a cycle pointer to the parent, to be filled after initialization.
     logger: &'static GlobalLogger,
+    disable_span_new: bool,
+    disable_record: bool,
+    disable_enter: bool,
+    disable_exit: bool,
+    disable_close: bool,
     _phan: F,
 }
 
@@ -115,7 +120,49 @@ where
 {
     #[inline(always)]
     pub(crate) fn new(logger: &'static GlobalLogger) -> Self {
-        Self { logger, _phan: Default::default() }
+        Self {
+            logger,
+            _phan: Default::default(),
+            disable_span_new: false,
+            disable_record: false,
+            disable_enter: false,
+            disable_exit: false,
+            disable_close: false,
+        }
+    }
+
+    #[inline]
+    pub fn disable_enter(mut self) -> Self {
+        self.disable_enter = true;
+        self
+    }
+
+    #[inline]
+    pub fn disable_exit(mut self) -> Self {
+        self.disable_exit = true;
+        self
+    }
+
+    #[inline]
+    pub fn disable_close(mut self) -> Self {
+        self.disable_close = true;
+        self
+    }
+
+    #[inline]
+    pub fn disable_record(mut self) -> Self {
+        self.disable_record = true;
+        self
+    }
+
+    #[inline]
+    pub fn disable_span(mut self) -> Self {
+        self.disable_span_new = true;
+        self.disable_record = true;
+        self.disable_enter = true;
+        self.disable_exit = true;
+        self.disable_close = true;
+        self
     }
 }
 
@@ -131,6 +178,9 @@ where
 
     #[inline]
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        if self.disable_span_new {
+            return;
+        }
         let data = ctx.span(id).expect("Span not found");
         let meta = data.metadata();
         let mut extensions = data.extensions_mut();
@@ -144,22 +194,32 @@ where
 
     #[inline]
     fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+        if self.disable_span_new {
+            return;
+        }
         let data = ctx.span(id).expect("Span not found");
         let meta = data.metadata();
         let mut extensions = data.extensions_mut();
         if let Some(v) = extensions.get_mut::<F>() {
             values.record(v);
-            log_span!(self.logger, id, meta, "record", v);
+            if !self.disable_record {
+                log_span!(self.logger, id, meta, "record", v);
+            }
         } else {
             let mut v = F::default();
             values.record(&mut v);
-            log_span!(self.logger, id, meta, "record", v);
+            if !self.disable_record {
+                log_span!(self.logger, id, meta, "record", v);
+            }
             extensions.insert(v);
         }
     }
 
     #[inline]
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if self.disable_enter {
+            return;
+        }
         let data = ctx.span(&id).expect("Span not found, this is a bug");
         let meta = data.metadata();
         let extensions = data.extensions();
@@ -170,6 +230,9 @@ where
 
     #[inline]
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if self.disable_exit {
+            return;
+        }
         let data = ctx.span(&id).expect("Span not found, this is a bug");
         let meta = data.metadata();
         let extensions = data.extensions();
@@ -180,6 +243,9 @@ where
 
     #[inline]
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        if self.disable_close {
+            return;
+        }
         let data = ctx.span(&id).expect("Span not found, this is a bug");
         let meta = data.metadata();
         let extensions = data.extensions();
