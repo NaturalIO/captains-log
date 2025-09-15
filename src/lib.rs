@@ -10,7 +10,7 @@
 //!
 //! * Allow customize log format and time format. Refer to [LogFormat].
 //!
-//! * Support subscribe log from tracing: (feature `tracing`). Refer to [tracing_bridge].
+//! * Support subscribe log from **tracing**: (feature `tracing`). Refer to [tracing_bridge].
 //!
 //! * Supports multiple types of sink stacking, each with its own log level.
 //!

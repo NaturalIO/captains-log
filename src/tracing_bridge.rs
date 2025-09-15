@@ -21,10 +21,14 @@
 //!                    .build().expect("setup log");
 //! ```
 //!
-//! ## Stacking multiple layers (alternative)
+//! ## Stacking layers (alternative)
 //!
-//! you can choose this method when you need 3rd-party layer
-//! implementation.
+//! you can choose this method when you need more customization,
+//! or when you need 3rd-party layer implementation.
+//!
+//! The following example skip the log of span enter and span exit, and setup the default
+//! [TracingText] formatter.
+//! Alternatively, you can re-implement [TracingFormatter] trait to change the format of attributes.
 //!
 //! ```
 //! use captains_log::*;
@@ -32,9 +36,10 @@
 //! use tracing_subscriber::{fmt, registry, prelude::*};
 //! let logger = recipe::raw_file_logger("/tmp/tracing.log", Level::Trace)
 //!                     .build().expect("setup logger");
-//! // fmt::layer is optional
-//! let reg = registry().with(fmt::layer().with_writer(std::io::stdout))
-//!     .with(logger.tracing_layer().unwrap());
+//! let layer = logger.tracing_layer::<tracing_bridge::TracingText>().unwrap()
+//!                 .disable_enter().disable_exit();
+//! // fmt::layer is optional, just to show an example.
+//! let reg = registry().with(fmt::layer().with_writer(std::io::stdout)).with(layer);
 //! dispatcher::set_global_default(Dispatch::new(reg)).expect("init tracing");
 //! ```
 //!
