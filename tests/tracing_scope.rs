@@ -1,9 +1,8 @@
-use captains_log::*;
+use captains_log::{tracing_bridge::*, *};
 mod common;
 use common::*;
 use std::fs::*;
-use tracing::{dispatcher, Dispatch};
-use tracing_subscriber::{fmt, prelude::*, registry};
+use tracing_subscriber::fmt;
 
 #[test]
 fn test_tracing_scope() {
@@ -23,7 +22,7 @@ fn test_tracing_scope() {
     tracing::trace!("trace with tracing {:?}", true);
 
     println!("test scopeed dispatcher");
-    let log_dispatch = get_global_logger().unwrap().tracing_dispatch().unwrap();
+    let log_dispatch = get_global_logger().unwrap().tracing_dispatch::<TracingText>().unwrap();
     dispatcher::with_default(&log_dispatch, || {
         tracing::info!("log from tracing in a scope");
     });

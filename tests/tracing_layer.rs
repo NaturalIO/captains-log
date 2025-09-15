@@ -1,9 +1,9 @@
-use captains_log::*;
+use captains_log::{tracing_bridge::*, *};
 mod common;
 use common::*;
 use std::fs::*;
 use tracing::{dispatcher, Dispatch};
-use tracing_subscriber::{fmt, prelude::*, registry};
+use tracing_subscriber::fmt;
 
 #[test]
 fn test_tracing_layer() {
@@ -17,7 +17,7 @@ fn test_tracing_layer() {
         recipe::raw_file_logger(file_path, Level::Trace).test().build().expect("setup logger");
     let reg = registry()
         .with(fmt::layer().with_writer(std::io::stdout))
-        .with(logger.tracing_layer().unwrap());
+        .with(logger.tracing_layer::<TracingText>().unwrap());
     // you should avoid calling init() in SubscriberInitExt trait,
     // because by tracing_subscriber has tracing-log as default feature,
     // it will failed when our logger already in log::set_logger().
