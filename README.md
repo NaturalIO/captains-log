@@ -17,7 +17,7 @@ docs.rs: [![docs.rs][docsrs-image]][docsrs]
 
 * Dynamic reconfigurable.
 
-* Support [subscribing span and event log](https://docs.rs/captains-log/latest/captains_log/ringfile) from `tracing` (**feature** `tracing`) with consistent format:
+* Support [subscribing span and event log](https://docs.rs/captains-log/latest/captains_log/ringfile) from **tracing** (**feature** `tracing`) with consistent format:
 
     + global default subscriber mode
 
@@ -75,7 +75,7 @@ Cargo.toml
 ``` toml
 [dependencies]
 log = { version = "0.4", features = ["std", "kv_unstable"] }
-captains_log = "0.12"
+captains_log = "0.13"
 ```
 
 lib.rs or main.rs:

@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.13.0] 2025-09-15
+
+### Added
+
+- tracing_bridge: Expose TracingFormatter trait and TracingText
+
+- tracing_bridge: Re-export tracing::{dispatcher, Dispatch}, and tracing_subscriber::{registry, prelude::\*}
+
+### Changed
+
+- GlobalLogger::tracing_layer() and tracing_dispatch() will need generic parameter TracingFormatter.
+
 ## [0.12.0] 2025-09-13
 
 ### Changed
