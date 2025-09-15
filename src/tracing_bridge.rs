@@ -31,12 +31,13 @@
 //! Alternatively, you can re-implement [TracingFormatter] trait to change the format of attributes.
 //!
 //! ```
-//! use captains_log::*;
-//! use tracing::{dispatcher, Dispatch};
-//! use tracing_subscriber::{fmt, registry, prelude::*};
+//! use captains_log::{*, tracing_bridge::*};
+//! // we have re-export tracing_subscriber::{registry, prelude::*},
+//! // and tracing::{dispatch, Dispatcher}
+//! use tracing_subscriber::fmt;
 //! let logger = recipe::raw_file_logger("/tmp/tracing.log", Level::Trace)
 //!                     .build().expect("setup logger");
-//! let layer = logger.tracing_layer::<tracing_bridge::TracingText>().unwrap()
+//! let layer = logger.tracing_layer::<TracingText>().unwrap()
 //!                 .disable_enter().disable_exit();
 //! // fmt::layer is optional, just to show an example.
 //! let reg = registry().with(fmt::layer().with_writer(std::io::stdout)).with(layer);
@@ -48,16 +49,15 @@
 //! Assume you have a different tracing global dispatcher,
 //! and want to output to captains_log only in the scope.
 //! ```
-//! use captains_log::*;
-//! use tracing::{dispatcher, Dispatch};
-//! use tracing_subscriber::{fmt, registry, prelude::*};
+//! use captains_log::{*, tracing_bridge::*};
+//! use tracing_subscriber::fmt;
 //!
 //! let logger = recipe::raw_file_logger("/tmp/tracing.log", Level::Trace)
 //!                     .build().expect("setup logger");
 //! let reg = registry().with(fmt::layer().with_writer(std::io::stdout));
 //! dispatcher::set_global_default(Dispatch::new(reg)).expect("init tracing");
 //! tracing::trace!("trace with tracing {:?}", true);
-//! let log_dispatch = logger.tracing_dispatch().unwrap();
+//! let log_dispatch = logger.tracing_dispatch::<TracingText>().unwrap();
 //! dispatcher::with_default(&log_dispatch, || {
 //!     tracing::info!("log from tracing in a scope");
 //! });
@@ -68,9 +68,11 @@ use crate::log_impl::GlobalLogger;
 use log::Record;
 use std::fmt::{self, Write};
 use tracing::field::{Field, Visit};
+pub use tracing::{dispatcher, Dispatch};
 use tracing::{span, Event, Metadata, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
+pub use tracing_subscriber::{prelude::*, registry};
 
 /// An tracing-subscriber layer implementation, for capturing event from tracing
 pub struct CaptainsLogLayer<F = TracingText>
