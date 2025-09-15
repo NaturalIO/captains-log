@@ -13,7 +13,7 @@ use std::sync::{
 use std::thread;
 
 #[cfg(feature = "tracing")]
-use crate::tracing_bridge::CaptainsLogLayer;
+use crate::tracing_bridge::{CaptainsLogLayer, TracingFormatter, TracingText};
 #[cfg(feature = "tracing")]
 use tracing::{dispatcher, Dispatch};
 #[cfg(feature = "tracing")]
@@ -339,7 +339,7 @@ impl GlobalLogger {
     #[cfg(feature = "tracing")]
     #[inline]
     fn init_tracing_global(&'static self) -> Result<(), Error> {
-        let dist = self.tracing_dispatch()?;
+        let dist = self.tracing_dispatch::<TracingText>()?;
         if let Err(_) = dispatcher::set_global_default(dist) {
             let e = Error::other("tracing global dispatcher already exists");
             eprintln!("{:?}", e);
@@ -359,13 +359,15 @@ impl GlobalLogger {
     ///
     /// In order to prevent duplicate output, it will fail if out tracing global subscriber
     /// has been initialized.
-    pub fn tracing_layer(&'static self) -> std::io::Result<CaptainsLogLayer> {
+    pub fn tracing_layer<F: TracingFormatter>(
+        &'static self,
+    ) -> std::io::Result<CaptainsLogLayer<F>> {
         if self.tracing_inited.load(Ordering::SeqCst) {
             let e = Error::other("global tracing dispatcher exists");
             eprintln!("{:?}", e);
             return Err(e);
         }
-        return Ok(CaptainsLogLayer::new(self));
+        return Ok(CaptainsLogLayer::<F>::new(self));
     }
 
     #[cfg(feature = "tracing")]
@@ -378,13 +380,15 @@ impl GlobalLogger {
     ///
     /// In order to prevent duplicate output, it will fail if out tracing global subscriber
     /// has been initialized.
-    pub fn tracing_dispatch(&'static self) -> std::io::Result<Dispatch> {
+    pub fn tracing_dispatch<F: TracingFormatter>(&'static self) -> std::io::Result<Dispatch> {
         if self.tracing_inited.load(Ordering::SeqCst) {
             let e = Error::other("global tracing dispatcher exists");
             eprintln!("{:?}", e);
             return Err(e);
         }
-        return Ok(Dispatch::new(tracing_subscriber::registry().with(CaptainsLogLayer::new(self))));
+        return Ok(Dispatch::new(
+            tracing_subscriber::registry().with(self.tracing_layer::<F>().unwrap()),
+        ));
     }
 }
 

@@ -32,6 +32,7 @@
 //! use tracing_subscriber::{fmt, registry, prelude::*};
 //! let logger = recipe::raw_file_logger("/tmp/tracing.log", Level::Trace)
 //!                     .build().expect("setup logger");
+//! // fmt::layer is optional
 //! let reg = registry().with(fmt::layer().with_writer(std::io::stdout))
 //!     .with(logger.tracing_layer().unwrap());
 //! dispatcher::set_global_default(Dispatch::new(reg)).expect("init tracing");
@@ -67,17 +68,21 @@ use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
 /// An tracing-subscriber layer implementation, for capturing event from tracing
-pub struct CaptainsLogLayer {
+pub struct CaptainsLogLayer<F = TracingText>
+where
+    F: TracingFormatter,
+{
     /// This is a cycle pointer to the parent, to be filled after initialization.
     logger: &'static GlobalLogger,
+    _phan: F,
 }
 
-unsafe impl Send for CaptainsLogLayer {}
-unsafe impl Sync for CaptainsLogLayer {}
+unsafe impl<F: TracingFormatter> Send for CaptainsLogLayer<F> {}
+unsafe impl<F: TracingFormatter> Sync for CaptainsLogLayer<F> {}
 
 macro_rules! log_span {
     ($logger: expr, $id: expr, $meta: expr, $action: expr, $v: expr) => {{
-        let msg = $v.as_str();
+        let msg = $v.as_ref();
         if msg.len() == 0 {
             $logger.log(
                 &Record::builder()
@@ -104,14 +109,21 @@ macro_rules! log_span {
     }};
 }
 
-impl CaptainsLogLayer {
+impl<F> CaptainsLogLayer<F>
+where
+    F: TracingFormatter,
+{
     #[inline(always)]
     pub(crate) fn new(logger: &'static GlobalLogger) -> Self {
-        Self { logger }
+        Self { logger, _phan: Default::default() }
     }
 }
 
-impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for CaptainsLogLayer {
+impl<S, F> Layer<S> for CaptainsLogLayer<F>
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+    F: TracingFormatter + 'static,
+{
     #[inline(always)]
     fn enabled(&self, meta: &Metadata<'_>, _ctx: Context<'_, S>) -> bool {
         convert_tracing_level(meta.level()) <= log::STATIC_MAX_LEVEL
@@ -122,8 +134,8 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for CaptainsLogLayer {
         let data = ctx.span(id).expect("Span not found");
         let meta = data.metadata();
         let mut extensions = data.extensions_mut();
-        if extensions.get_mut::<StringVisitor>().is_none() {
-            let mut v = StringVisitor::new();
+        if extensions.get_mut::<F>().is_none() {
+            let mut v = F::default();
             attrs.record(&mut v);
             log_span!(self.logger, id, meta, "new", v);
             extensions.insert(v);
@@ -135,11 +147,11 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for CaptainsLogLayer {
         let data = ctx.span(id).expect("Span not found");
         let meta = data.metadata();
         let mut extensions = data.extensions_mut();
-        if let Some(v) = extensions.get_mut::<StringVisitor>() {
+        if let Some(v) = extensions.get_mut::<F>() {
             values.record(v);
             log_span!(self.logger, id, meta, "record", v);
         } else {
-            let mut v = StringVisitor::new();
+            let mut v = F::default();
             values.record(&mut v);
             log_span!(self.logger, id, meta, "record", v);
             extensions.insert(v);
@@ -151,7 +163,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for CaptainsLogLayer {
         let data = ctx.span(&id).expect("Span not found, this is a bug");
         let meta = data.metadata();
         let extensions = data.extensions();
-        if let Some(v) = extensions.get::<StringVisitor>() {
+        if let Some(v) = extensions.get::<F>() {
             log_span!(self.logger, id, meta, "enter", v);
         }
     }
@@ -161,7 +173,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for CaptainsLogLayer {
         let data = ctx.span(&id).expect("Span not found, this is a bug");
         let meta = data.metadata();
         let extensions = data.extensions();
-        if let Some(v) = extensions.get::<StringVisitor>() {
+        if let Some(v) = extensions.get::<F>() {
             log_span!(self.logger, id, meta, "exit", v);
         }
     }
@@ -171,7 +183,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for CaptainsLogLayer {
         let data = ctx.span(&id).expect("Span not found, this is a bug");
         let meta = data.metadata();
         let extensions = data.extensions();
-        if let Some(v) = extensions.get::<StringVisitor>() {
+        if let Some(v) = extensions.get::<F>() {
             log_span!(self.logger, id, meta, "close", v);
         }
     }
@@ -179,12 +191,12 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for CaptainsLogLayer {
     #[inline(always)]
     fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
         let meta = event.metadata();
-        let mut v = StringVisitor::new();
+        let mut v = F::default();
         event.record(&mut v);
         self.logger.log(
             &Record::builder()
                 .level(convert_tracing_level(meta.level()))
-                .args(format_args!("{}", v.as_str()))
+                .args(format_args!("{}", v.as_ref()))
                 .target(meta.target())
                 .module_path(meta.module_path())
                 .file(meta.file())
@@ -205,9 +217,11 @@ pub fn convert_tracing_level(level: &tracing::Level) -> log::Level {
     }
 }
 
-struct StringVisitor(String);
+pub trait TracingFormatter: Visit + Default + AsRef<str> + Send + Sync + 'static {}
 
-impl Visit for StringVisitor {
+pub struct TracingText(String);
+
+impl Visit for TracingText {
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.0.len() == 0 {
             if field.name() == "message" {
@@ -234,14 +248,18 @@ impl Visit for StringVisitor {
     }
 }
 
-impl StringVisitor {
+impl Default for TracingText {
     #[inline(always)]
-    fn new() -> Self {
+    fn default() -> Self {
         Self(String::new())
     }
+}
 
+impl AsRef<str> for TracingText {
     #[inline(always)]
-    fn as_str(&self) -> &str {
+    fn as_ref(&self) -> &str {
         self.0.as_str()
     }
 }
+
+impl TracingFormatter for TracingText {}
