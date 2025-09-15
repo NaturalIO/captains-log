@@ -4,13 +4,15 @@
 //!
 //! The message from tracing will use the same log format as defined in [crate::LogFormat].
 //!
-//! We suggest you should **opt out `tracing-log` from default feature-flag of `tracing_subscriber`**,
-//! as it will conflict with captains-log. (It's not allowed to call `log::set_logger()` twice)
+//! As we have re-exported required stuff from tracing & tracing_subscriber, you don't need to add them as dependency.
+//!
+//! **NOTE**: You should **opt out tracing-log**
+//!  (Because it's in default feature-flag of `tracing_subscriber`, it will prevent us to setup captains_log)
 //!
 //! ## Set global dispatcher (recommended)
 //!
-//! Just turn on the flag `tracing_global` in [crate::Builder], then it will setup [GlobalLogger] as the
-//! default Subscriber.
+//! Just turn on the flag `tracing_global` in [crate::Builder], then it will setup [CaptainsLogLayer] with [TracingText] as the
+//! global default.
 //!
 //! Error will be thrown by build() if other default subscribe has been set in tracing.
 //!
@@ -279,6 +281,7 @@ where
     }
 }
 
+/// To convert tracing::Level to log::Level
 #[inline(always)]
 pub fn convert_tracing_level(level: &tracing::Level) -> log::Level {
     match *level {
@@ -290,8 +293,10 @@ pub fn convert_tracing_level(level: &tracing::Level) -> log::Level {
     }
 }
 
+/// Format span::Attributes, keep track of span::record() adding attributes
 pub trait TracingFormatter: Visit + Default + AsRef<str> + Send + Sync + 'static {}
 
+/// Format span::Attributes into Text
 pub struct TracingText(String);
 
 impl Visit for TracingText {
