@@ -54,7 +54,7 @@ docs.rs: [![docs.rs][docsrs-image]][docsrs]
 
 * Fine-grain module-level control and API-level log handling.
 
-  Provides `LogFilter` and `LogFilterKV`  to filter specified logs on-the-fly. Refer to [doc](https://docs.rs/captains-log/latest/captains_log/filter)
+  Provides `LogFilter` and `KeyFilter`  to filter specified logs on-the-fly. Refer to [doc](https://docs.rs/captains-log/latest/captains_log/filter)
 
 * For test suits usage:
 
