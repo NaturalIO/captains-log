@@ -2,13 +2,15 @@
 #[macro_export]
 macro_rules! do_log_filter {
     (target: $target:expr, $log_filter:expr, $lvl:expr, $($arg:tt)+) => ({
-        let lvl = $lvl;
-        if lvl <= log::STATIC_MAX_LEVEL && lvl as usize <= $log_filter.get_level() && lvl <= log::max_level() {
-            $log_filter._private_api_log(
-                std::format_args!($($arg)+),
-                lvl,
-                &($target, std::module_path!(), std::file!(), std::line!()),
-            );
+        {
+            use captains_log::filter::Filter;
+            if $lvl <= log::STATIC_MAX_LEVEL && $lvl <= log::max_level() && $log_filter.is_enabled($lvl) {
+                $log_filter._private_api_log(
+                    std::format_args!($($arg)+),
+                    $lvl,
+                    &($target, std::module_path!(), std::file!(), std::line!()),
+                );
+            }
         }
     });
     ($log_filter:expr, $lvl:expr, $($arg:tt)+) => (do_log_filter!(target: std::module_path!(), $log_filter, $lvl, $($arg)+))
@@ -17,7 +19,7 @@ macro_rules! do_log_filter {
 pub(super) use do_log_filter;
 
 /// Similar to [error!()](log::error!()), but the first argument is [LogFilter](crate::filter::LogFilter) or
-/// [LogFilterKV](crate::filter::LogFilterKV).
+/// [KeyFilter](crate::filter::KeyFilter).
 #[macro_export]
 macro_rules! logger_error {
     ($log_filter:expr, $($arg:tt)+) => (
@@ -28,7 +30,7 @@ macro_rules! logger_error {
 pub(super) use logger_error;
 
 /// Similar to [warn!()](log::warn!()), but the first argument is [LogFilter](crate::filter::LogFilter) or
-/// [LogFilterKV](crate::filter::LogFilterKV).
+/// [KeyFilter](crate::filter::KeyFilter).
 #[macro_export]
 macro_rules! logger_warn {
     ($log_filter:expr, $($arg:tt)+) => (
@@ -39,7 +41,7 @@ macro_rules! logger_warn {
 pub(super) use logger_warn;
 
 /// Similar to [info!()](log::info!()), but the first argument is [LogFilter](crate::filter::LogFilter) or
-/// [LogFilterKV](crate::filter::LogFilterKV).
+/// [KeyFilter](crate::filter::KeyFilter).
 #[macro_export]
 macro_rules! logger_info {
     ($log_filter:expr, $($arg:tt)+) => (
@@ -50,7 +52,7 @@ macro_rules! logger_info {
 pub(super) use logger_info;
 
 /// Similar to [debug!()](log::debug!()), but the first argument is [LogFilter](crate::filter::LogFilter) or
-/// [LogFilterKV](crate::filter::LogFilterKV)
+/// [KeyFilter](crate::filter::KeyFilter)
 #[macro_export]
 macro_rules! logger_debug {
     ($log_filter:expr, $($arg:tt)+) => (
@@ -61,7 +63,7 @@ macro_rules! logger_debug {
 pub(super) use logger_debug;
 
 /// Similar to [trace!()](log::trace!()), but the first argument is [LogFilter](crate::filter::LogFilter) or
-/// [LogFilterKV](crate::filter::LogFilterKV)
+/// [KeyFilter](crate::filter::KeyFilter)
 #[macro_export]
 macro_rules! logger_trace {
     ($log_filter:expr, $($arg:tt)+) => (
@@ -74,13 +76,13 @@ pub(super) use logger_trace;
 /// On debug build, will log with log_filter and panic when condition not met. Skip the check on
 /// release build.
 ///
-/// The first argument is [LogFilter](crate::filter::LogFilter) or [LogFilterKV](crate::filter::LogFilterKV), the rest arguments are like [core::debug_assert!()].
+/// The first argument is [LogFilter](crate::filter::LogFilter) or [KeyFilter](crate::filter::KeyFilter), the rest arguments are like [core::debug_assert!()].
 ///
 /// # Examples:
 ///
 /// ``` rust
 /// use captains_log::*;
-/// let logger = filter::LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
+/// let logger = filter::KeyFilter::new("req_id", format!("{:016x}", 123).to_string());
 /// let started = true;
 /// logger_debug_assert!(logger, started);
 /// logger_debug_assert!(logger, started, "job must have been started");
@@ -95,13 +97,13 @@ pub(super) use logger_debug_assert;
 /// On debug build, will log with log_filter and panic when condition not met. Skip the check on
 /// release build.
 ///
-/// The first argument is [LogFilter](crate::filter::LogFilter) or [LogFilterKV](crate::filter::LogFilterKV), the rest arguments are like [core::debug_assert_eq!()].
+/// The first argument is [LogFilter](crate::filter::LogFilter) or [KeyFilter](crate::filter::KeyFilter), the rest arguments are like [core::debug_assert_eq!()].
 ///
 /// # Examples:
 ///
 /// ``` rust
 /// use captains_log::*;
-/// let logger = filter::LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
+/// let logger = filter::KeyFilter::new("req_id", format!("{:016x}", 123).to_string());
 /// logger_debug_assert_eq!(logger, 1, 1);
 /// logger_debug_assert_eq!(logger, 1, 1, "impossible things happened: {}", "haha");
 /// ```
@@ -114,13 +116,13 @@ pub(super) use logger_debug_assert_eq;
 
 /// Will log with log_filter and panic when condition not met.
 ///
-/// The first argument is [LogFilter](crate::filter::LogFilter) or [LogFilterKV](crate::filter::LogFilterKV), the rest arguments are like [core::assert!()].
+/// The first argument is [LogFilter](crate::filter::LogFilter) or [KeyFilter](crate::filter::KeyFilter), the rest arguments are like [core::assert!()].
 ///
 /// # Examples:
 ///
 /// ``` rust
 /// use captains_log::*;
-/// let logger = filter::LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
+/// let logger = filter::KeyFilter::new("req_id", format!("{:016x}", 123).to_string());
 /// let user_id = Some(111);
 /// logger_assert!(logger, user_id.is_some());
 /// logger_assert!(logger, user_id.is_some(), "user must login");
@@ -158,13 +160,13 @@ pub(super) use logger_assert;
 
 /// Will log with log_filter and panic when condition not met.
 ///
-/// The first argument is [LogFilter](crate::filter::LogFilter) or [LogFilterKV](crate::filter::LogFilterKV), the rest arguments are like [core::assert_eq!()].
+/// The first argument is [LogFilter](crate::filter::LogFilter) or [KeyFilter](crate::filter::KeyFilter), the rest arguments are like [core::assert_eq!()].
 ///
 /// # Examples:
 ///
 /// ``` rust
 /// use captains_log::*;
-/// let logger = filter::LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
+/// let logger = filter::KeyFilter::new("req_id", format!("{:016x}", 123).to_string());
 /// logger_assert_eq!(logger, 1, 1);
 /// logger_assert_eq!(logger, 1, 1, "impossible things happened");
 /// ```

@@ -9,6 +9,31 @@ use common::*;
 const RE_DEBUG: &str = r"^\[(.+)\]\[(\w+)\]\[(.+)\:(\d+)\] (.+)$";
 
 #[test]
+fn test_dummy_filter() {
+    lock_file!();
+
+    let mut builder = split_error_file_logger("/tmp", "log_filter", Level::Trace);
+    builder.dynamic = true;
+    clear_test_files(&builder);
+    setup_log(builder).expect("setup_log");
+
+    let logger = DummyFilter();
+    logger_trace!(logger, "trace a bug");
+    logger_debug!(logger, "captain's log");
+    logger_info!(logger, "Make it so");
+    logger_warn!(logger, "Fire phasers!");
+    logger_error!(logger, "I'm a doctor, not a magician!");
+
+    let debug_logs = parse_log("/tmp/log_filter.log", RE_DEBUG).expect("parse log");
+    assert_eq!(debug_logs.len(), 5);
+    assert_eq!(debug_logs[0][2], "TRACE");
+    assert_eq!(debug_logs[1][2], "DEBUG");
+    assert_eq!(debug_logs[2][2], "INFO");
+    assert_eq!(debug_logs[3][2], "WARN");
+    assert_eq!(debug_logs[4][2], "ERROR");
+}
+
+#[test]
 fn test_logger_filter() {
     lock_file!();
 
@@ -58,7 +83,7 @@ fn test_logger_filter_kv() {
     clear_test_files(&builder);
 
     builder.build().expect("setup_log");
-    let logger = LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
+    let logger = KeyFilter::new("req_id", format!("{:016x}", 123).to_string());
     // trace not in global max_level
     logger_trace!(logger, "trace should be filtered");
     logger_debug!(logger, "captain's log");

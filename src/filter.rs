@@ -12,18 +12,43 @@
 //!
 //! See the doc of [LogFilter] for details.
 //!
-//! In order For API level tracking, we provide `LogFilterKV`, which inherits from `LogFilter`,
+//! In order For API level tracking, we provide `KeyFilter`, which inherits from `LogFilter`,
 //! a custom key can be placed in it. It's like human readable log with structure message.
 //! So that you can grep the log with specified request.
 //!
-//! See the doc of [LogFilterKV] for details.
+//! See the doc of [KeyFilter] for details.
 
 use std::{
-    fmt, str,
+    fmt,
+    ops::Deref,
+    str,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
 use log::{kv::*, *};
+
+pub trait Filter {
+    /// whether a log level is enable
+    fn is_enabled(&self, _level: Level) -> bool;
+
+    /// for macros logger_XXX
+    #[doc(hidden)]
+    #[inline(always)]
+    fn _private_api_log(
+        &self, args: fmt::Arguments, level: Level,
+        &(target, module_path, file, line): &(&str, &str, &str, u32),
+    ) {
+        let record = RecordBuilder::new()
+            .level(level)
+            .target(target)
+            .module_path(Some(module_path))
+            .file(Some(file))
+            .line(Some(line))
+            .args(args)
+            .build();
+        logger().log(&record);
+    }
+}
 
 /// `LogFilter` supports concurrent control the log level filter with atomic.
 ///
@@ -68,23 +93,12 @@ impl LogFilter {
     pub fn get_level(&self) -> usize {
         self.max_level.load(Ordering::Relaxed)
     }
+}
 
-    /// for macros logger_XXX
-    #[doc(hidden)]
+impl Filter for LogFilter {
     #[inline(always)]
-    pub fn _private_api_log(
-        &self, args: fmt::Arguments, level: Level,
-        &(target, module_path, file, line): &(&str, &str, &str, u32),
-    ) {
-        let record = RecordBuilder::new()
-            .level(level)
-            .target(target)
-            .module_path(Some(module_path))
-            .file(Some(file))
-            .line(Some(line))
-            .args(args)
-            .build();
-        logger().log(&record);
+    fn is_enabled(&self, level: Level) -> bool {
+        level as usize <= self.max_level.load(Ordering::Relaxed)
     }
 }
 
@@ -105,7 +119,34 @@ impl log::kv::Source for LogFilter {
     }
 }
 
-/// `LogFilterKV` is inherited from [LogFilter], with one additional key into log format.
+/// A Filter that enables all log levels
+pub struct DummyFilter();
+
+impl Filter for DummyFilter {
+    #[inline(always)]
+    fn is_enabled(&self, _level: Level) -> bool {
+        true
+    }
+}
+
+impl log::kv::Source for DummyFilter {
+    #[inline(always)]
+    fn visit<'kvs>(&'kvs self, _visitor: &mut dyn Visitor<'kvs>) -> Result<(), Error> {
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn get<'a>(&'a self, _key: Key) -> Option<Value<'a>> {
+        return None;
+    }
+
+    #[inline(always)]
+    fn count(&self) -> usize {
+        0
+    }
+}
+
+/// `KeyFilter` is inherited from [LogFilter], with one additional key into log format.
 ///
 /// The name of the key can be customized.
 ///
@@ -114,7 +155,7 @@ impl log::kv::Source for LogFilter {
 /// you can grep all the relevant log with that `req_id`.
 ///
 /// ``` rust
-/// use captains_log::{*, filter::LogFilterKV};
+/// use captains_log::{*, filter::KeyFilter};
 /// fn debug_format_req_id_f(r: FormatRecord) -> String {
 ///     let time = r.time();
 ///     let level = r.level();
@@ -129,7 +170,7 @@ impl log::kv::Source for LogFilter {
 ///                 recipe::DEFAULT_TIME, debug_format_req_id_f)
 ///     .build().expect("setup log");
 ///
-/// let logger = LogFilterKV::new("req_id", format!("{:016x}", 123).to_string());
+/// let logger = KeyFilter::new("req_id", format!("{:016x}", 123).to_string());
 /// info!("API service started");
 /// logger_debug!(logger, "Req / received");
 /// logger_debug!(logger, "header xxx");
@@ -145,49 +186,19 @@ impl log::kv::Source for LogFilter {
 /// [2025-06-11 14:33:11.009092][DEBUG][request.rs:67] Req / 200 complete (000000000000007b)
 /// ```
 #[derive(Clone)]
-pub struct LogFilterKV {
+pub struct KeyFilter {
     inner: LogFilter,
     key: &'static str,
     value: String,
 }
 
-impl LogFilterKV {
+impl KeyFilter {
     pub fn new(key: &'static str, value: String) -> Self {
         Self { inner: LogFilter::new(), key, value }
     }
-
-    /// When LogFilter is shared in Arc, allows concurrently changing log level filter
-    #[inline]
-    pub fn set_level(&self, level: Level) {
-        self.inner.set_level(level)
-    }
-
-    #[inline]
-    pub fn get_level(&self) -> usize {
-        self.inner.get_level()
-    }
-
-    /// for macros logger_XXX
-    #[doc(hidden)]
-    #[inline(always)]
-    pub fn _private_api_log(
-        &self, args: fmt::Arguments, level: Level,
-        &(target, module_path, file, line): &(&str, &str, &str, u32),
-    ) {
-        let record = RecordBuilder::new()
-            .level(level)
-            .target(target)
-            .module_path(Some(module_path))
-            .file(Some(file))
-            .line(Some(line))
-            .key_values(&self)
-            .args(args)
-            .build();
-        logger().log(&record);
-    }
 }
 
-impl log::kv::Source for LogFilterKV {
+impl log::kv::Source for KeyFilter {
     #[inline(always)]
     fn visit<'kvs>(&'kvs self, visitor: &mut dyn Visitor<'kvs>) -> Result<(), Error> {
         visitor.visit_pair(self.key.to_key(), self.value.as_str().into())
@@ -204,5 +215,39 @@ impl log::kv::Source for LogFilterKV {
     #[inline(always)]
     fn count(&self) -> usize {
         1
+    }
+}
+
+impl Deref for KeyFilter {
+    type Target = LogFilter;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl Filter for KeyFilter {
+    #[inline(always)]
+    fn is_enabled(&self, level: Level) -> bool {
+        self.inner.is_enabled(level)
+    }
+
+    /// for macros logger_XXX
+    #[doc(hidden)]
+    #[inline(always)]
+    fn _private_api_log(
+        &self, args: fmt::Arguments, level: Level,
+        &(target, module_path, file, line): &(&str, &str, &str, u32),
+    ) {
+        let record = RecordBuilder::new()
+            .level(level)
+            .target(target)
+            .module_path(Some(module_path))
+            .file(Some(file))
+            .line(Some(line))
+            .key_values(&self)
+            .args(args)
+            .build();
+        logger().log(&record);
     }
 }
