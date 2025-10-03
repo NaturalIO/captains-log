@@ -27,7 +27,7 @@ use std::{
 
 use log::{kv::*, *};
 
-pub trait Filter {
+pub trait Filter: Send + Sized + 'static {
     /// whether a log level is enable
     fn is_enabled(&self, _level: Level) -> bool;
 
