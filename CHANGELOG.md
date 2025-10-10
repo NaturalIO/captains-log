@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.15.1] 2025-10-11
+
+### Changed
+
+- Upgrade crossfire to 2.1
+
 ## [0.15.0] 2025-10-11
 
 ### Changed
