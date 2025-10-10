@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.15.0] 2025-10-11
+
+### Changed
+
+- Add KeyLogger as KeyFilter<DummyFilter>, and allow KeyFilter to wrap &LogFilter and Arc<LogFilter>.
+
+- revert 0.14.1, no Send and 'static restriction to Filter
+
 ## [0.14.1] 2025-10-03
 
 ### Fixed
