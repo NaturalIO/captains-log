@@ -19,15 +19,16 @@
 //! See the doc of [KeyFilter] for details.
 
 use std::{
-    fmt,
-    ops::Deref,
-    str,
-    sync::atomic::{AtomicUsize, Ordering},
+    fmt, str,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
 use log::{kv::*, *};
 
-pub trait Filter: Send + Sized + 'static {
+pub trait Filter {
     /// whether a log level is enable
     fn is_enabled(&self, _level: Level) -> bool;
 
@@ -47,6 +48,20 @@ pub trait Filter: Send + Sized + 'static {
             .args(args)
             .build();
         logger().log(&record);
+    }
+}
+
+impl<T: Filter> Filter for Arc<T> {
+    #[inline(always)]
+    fn is_enabled(&self, _level: Level) -> bool {
+        Filter::is_enabled(self.as_ref(), _level)
+    }
+}
+
+impl<T: Filter> Filter for &T {
+    #[inline(always)]
+    fn is_enabled(&self, _level: Level) -> bool {
+        Filter::is_enabled(*self, _level)
     }
 }
 
@@ -120,7 +135,15 @@ impl log::kv::Source for LogFilter {
 }
 
 /// A Filter that enables all log levels
+#[derive(Default)]
 pub struct DummyFilter();
+
+impl DummyFilter {
+    #[inline(always)]
+    pub fn new() -> Self {
+        DummyFilter()
+    }
+}
 
 impl Filter for DummyFilter {
     #[inline(always)]
@@ -146,7 +169,7 @@ impl log::kv::Source for DummyFilter {
     }
 }
 
-/// `KeyFilter` is inherited from [LogFilter], with one additional key into log format.
+/// `KeyFilter` is wrapper from [Filter], with one additional key into log format.
 ///
 /// The name of the key can be customized.
 ///
@@ -155,7 +178,8 @@ impl log::kv::Source for DummyFilter {
 /// you can grep all the relevant log with that `req_id`.
 ///
 /// ``` rust
-/// use captains_log::{*, filter::KeyFilter};
+/// use captains_log::{*, filter::{LogFilter, KeyFilter}};
+/// use std::sync::Arc;
 /// fn debug_format_req_id_f(r: FormatRecord) -> String {
 ///     let time = r.time();
 ///     let level = r.level();
@@ -170,11 +194,14 @@ impl log::kv::Source for DummyFilter {
 ///                 recipe::DEFAULT_TIME, debug_format_req_id_f)
 ///     .build().expect("setup log");
 ///
-/// let logger = KeyFilter::new("req_id", format!("{:016x}", 123).to_string());
+/// // Wrapping and Arc
+/// let filter = Arc::new(LogFilter::new());
+/// let logger = KeyFilter::with(filter.clone(), "req_id", format!("{:016x}", 123).to_string());
 /// info!("API service started");
 /// logger_debug!(logger, "Req / received");
 /// logger_debug!(logger, "header xxx");
 /// logger_info!(logger, "Req / 200 complete");
+///
 /// ```
 ///
 /// The log will be:
@@ -185,20 +212,30 @@ impl log::kv::Source for DummyFilter {
 /// [2025-06-11 14:33:10.099232][WARN][request.rs:68] header xxx (000000000000007b)
 /// [2025-06-11 14:33:11.009092][DEBUG][request.rs:67] Req / 200 complete (000000000000007b)
 /// ```
+///
+/// Using reference:
+///
+/// ```rust
+/// use captains_log::{*, filter::{LogFilter, KeyFilter}};
+/// let filter = LogFilter::new();
+/// let logger = KeyFilter::with(&filter, "req_id", format!("{:016x}", 123).to_string());
+/// logger_debug!(logger, "Req / received");
+/// ```
 #[derive(Clone)]
-pub struct KeyFilter {
-    inner: LogFilter,
+pub struct KeyFilter<T> {
+    inner: T,
     key: &'static str,
     value: String,
 }
 
-impl KeyFilter {
-    pub fn new(key: &'static str, value: String) -> Self {
-        Self { inner: LogFilter::new(), key, value }
+impl<T> KeyFilter<T> {
+    #[inline]
+    pub fn with(inner: T, key: &'static str, value: String) -> Self {
+        Self { inner, key, value }
     }
 }
 
-impl log::kv::Source for KeyFilter {
+impl<T> log::kv::Source for KeyFilter<T> {
     #[inline(always)]
     fn visit<'kvs>(&'kvs self, visitor: &mut dyn Visitor<'kvs>) -> Result<(), Error> {
         visitor.visit_pair(self.key.to_key(), self.value.as_str().into())
@@ -218,15 +255,7 @@ impl log::kv::Source for KeyFilter {
     }
 }
 
-impl Deref for KeyFilter {
-    type Target = LogFilter;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl Filter for KeyFilter {
+impl<T: Filter> Filter for KeyFilter<T> {
     #[inline(always)]
     fn is_enabled(&self, level: Level) -> bool {
         self.inner.is_enabled(level)
@@ -249,5 +278,15 @@ impl Filter for KeyFilter {
             .args(args)
             .build();
         logger().log(&record);
+    }
+}
+
+/// Apply the keyed log format without a wrapper
+pub type KeyLogger = KeyFilter<DummyFilter>;
+
+impl KeyFilter<DummyFilter> {
+    #[inline]
+    pub fn new(key: &'static str, value: String) -> Self {
+        Self { inner: DummyFilter(), key, value }
     }
 }

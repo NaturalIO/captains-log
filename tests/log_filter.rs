@@ -2,6 +2,7 @@ use captains_log::{filter::*, recipe::split_error_file_logger, *};
 use regex::Regex;
 use std::fs::*;
 use std::panic;
+use std::sync::Arc;
 
 mod common;
 use common::*;
@@ -59,7 +60,7 @@ fn test_logger_filter() {
 }
 
 #[test]
-fn test_logger_filter_kv() {
+fn test_logger_filter_key_logger() {
     lock_file!();
 
     const RE_DEBUG_REQ: &str = r"^\[(.+)\]\[(\w+)\]\[(.+)\:(\d+)\] (.+?)( \((\w+)\))?$";
@@ -75,7 +76,7 @@ fn test_logger_filter_kv() {
     }
     let mut builder = recipe::raw_file_logger_custom(
         "/tmp/log_filter.log",
-        Level::Debug,
+        Level::Trace,
         recipe::DEFAULT_TIME,
         debug_format_req_id_f,
     );
@@ -83,7 +84,139 @@ fn test_logger_filter_kv() {
     clear_test_files(&builder);
 
     builder.build().expect("setup_log");
-    let logger = KeyFilter::new("req_id", format!("{:016x}", 123).to_string());
+
+    // Test KeyLogger
+    let logger = KeyLogger::new("req_id", format!("{:016x}", 123).to_string());
+    logger_debug!(logger, "captain's log");
+    warn!("fleet broadcast");
+
+    let debug_logs = parse_log("/tmp/log_filter.log", RE_DEBUG_REQ).expect("parse log");
+    assert_eq!(debug_logs.len(), 2);
+    assert_eq!(debug_logs[0][2], "DEBUG");
+    assert_eq!(debug_logs[0][5], "captain's log");
+    assert_eq!(debug_logs[0][7], "000000000000007b");
+    assert_eq!(debug_logs[1][5], "fleet broadcast");
+    assert_eq!(debug_logs[1][7], ""); // global log has no req_id
+}
+
+#[test]
+fn test_logger_filter_key_filter_ref() {
+    lock_file!();
+
+    const RE_DEBUG_REQ: &str = r"^\[(.+)\]\[(\w+)\]\[(.+)\:(\d+)\] (.+?)( \((\w+)\))?$";
+
+    fn debug_format_req_id_f(r: FormatRecord) -> String {
+        let time = r.time();
+        let level = r.level();
+        let file = r.file();
+        let line = r.line();
+        let msg = r.msg();
+        let req_id = r.key("req_id");
+        format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
+    }
+    let mut builder = recipe::raw_file_logger_custom(
+        "/tmp/log_filter.log",
+        Level::Trace,
+        recipe::DEFAULT_TIME,
+        debug_format_req_id_f,
+    );
+    builder.dynamic = true;
+    clear_test_files(&builder);
+
+    builder.build().expect("setup_log");
+
+    let filter = LogFilter::new();
+    filter.set_level(Level::Debug);
+    // Test KeyFilter<&LogFilter>
+    let logger = KeyFilter::with(&filter, "req_id", format!("{:016x}", 123).to_string());
+    // trace not in global max_level
+    logger_trace!(logger, "trace should be filtered");
+    logger_debug!(logger, "captain's log");
+    warn!("fleet broadcast");
+
+    let debug_logs = parse_log("/tmp/log_filter.log", RE_DEBUG_REQ).expect("parse log");
+    assert_eq!(debug_logs.len(), 2);
+    assert_eq!(debug_logs[0][2], "DEBUG");
+    assert_eq!(debug_logs[0][5], "captain's log");
+    assert_eq!(debug_logs[0][7], "000000000000007b");
+    assert_eq!(debug_logs[1][5], "fleet broadcast");
+    assert_eq!(debug_logs[1][7], ""); // global log has no req_id
+}
+
+#[test]
+fn test_logger_filter_key_filter_consume() {
+    lock_file!();
+
+    const RE_DEBUG_REQ: &str = r"^\[(.+)\]\[(\w+)\]\[(.+)\:(\d+)\] (.+?)( \((\w+)\))?$";
+
+    fn debug_format_req_id_f(r: FormatRecord) -> String {
+        let time = r.time();
+        let level = r.level();
+        let file = r.file();
+        let line = r.line();
+        let msg = r.msg();
+        let req_id = r.key("req_id");
+        format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
+    }
+    let mut builder = recipe::raw_file_logger_custom(
+        "/tmp/log_filter.log",
+        Level::Trace,
+        recipe::DEFAULT_TIME,
+        debug_format_req_id_f,
+    );
+    builder.dynamic = true;
+    clear_test_files(&builder);
+
+    builder.build().expect("setup_log");
+
+    let filter = LogFilter::new();
+    filter.set_level(Level::Debug);
+    // Test KeyFilter<&LogFilter>
+    let logger = KeyFilter::with(filter, "req_id", format!("{:016x}", 123).to_string());
+    // trace not in global max_level
+    logger_trace!(logger, "trace should be filtered");
+    logger_debug!(logger, "captain's log");
+    warn!("fleet broadcast");
+
+    let debug_logs = parse_log("/tmp/log_filter.log", RE_DEBUG_REQ).expect("parse log");
+    assert_eq!(debug_logs.len(), 2);
+    assert_eq!(debug_logs[0][2], "DEBUG");
+    assert_eq!(debug_logs[0][5], "captain's log");
+    assert_eq!(debug_logs[0][7], "000000000000007b");
+    assert_eq!(debug_logs[1][5], "fleet broadcast");
+    assert_eq!(debug_logs[1][7], ""); // global log has no req_id
+}
+
+#[test]
+fn test_logger_filter_key_filter_arc() {
+    lock_file!();
+
+    const RE_DEBUG_REQ: &str = r"^\[(.+)\]\[(\w+)\]\[(.+)\:(\d+)\] (.+?)( \((\w+)\))?$";
+
+    fn debug_format_req_id_f(r: FormatRecord) -> String {
+        let time = r.time();
+        let level = r.level();
+        let file = r.file();
+        let line = r.line();
+        let msg = r.msg();
+        let req_id = r.key("req_id");
+        format!("[{time}][{level}][{file}:{line}] {msg}{req_id}\n").to_string()
+    }
+    let mut builder = recipe::raw_file_logger_custom(
+        "/tmp/log_filter.log",
+        Level::Trace,
+        recipe::DEFAULT_TIME,
+        debug_format_req_id_f,
+    );
+    builder.dynamic = true;
+    clear_test_files(&builder);
+
+    builder.build().expect("setup_log");
+
+    let filter = LogFilter::new();
+    filter.set_level(Level::Debug);
+    // Test KeyFilter<&LogFilter>
+    let logger = KeyFilter::with(Arc::new(filter), "req_id", format!("{:016x}", 123).to_string());
     // trace not in global max_level
     logger_trace!(logger, "trace should be filtered");
     logger_debug!(logger, "captain's log");
