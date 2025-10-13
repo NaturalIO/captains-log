@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.15.2] 2025-10-14
+
+### Fixed
+
+- Should reset the max log level filter when re-init with the same config
+
 ## [0.15.1] 2025-10-11
 
 ### Changed
