@@ -120,6 +120,8 @@ impl GlobalLoggerStatic {
                     eprintln!("failed to open log sink: {:?}", e);
                     return Err(e);
                 }
+                // reset the log level
+                log::set_max_level(builder.get_max_level());
                 return Ok(false);
             }
             Some(false) => {

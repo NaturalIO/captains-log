@@ -69,6 +69,51 @@ fn test_global_log_file() {
 }
 
 #[test]
+fn test_global_log_file_reset() {
+    lock_file!();
+
+    let mut builder = recipe::raw_file_logger("/tmp/log_test.log", Level::Debug);
+    builder.dynamic = true;
+    clear_test_files(&builder);
+    builder.build().expect("setup_log");
+    debug!("test1 {}", "debug");
+    info!("test2");
+    error!("test3_error {}", "hahah");
+    let debug_logs = parse_log("/tmp/log_test.log", RE_DEBUG).expect("parse log");
+    assert_eq!(debug_logs.len(), 3);
+    assert_eq!(debug_logs[0][2], "DEBUG");
+    assert_eq!(debug_logs[0][3], "global_log.rs");
+    assert_eq!(debug_logs[0][5], "test1 debug");
+    assert_eq!(debug_logs[1][2], "INFO");
+    assert_eq!(debug_logs[1][5], "test2");
+    assert_eq!(debug_logs[2][5], "test3_error hahah");
+    assert_eq!(debug_logs[2][2], "ERROR");
+
+    // messup with the log level
+    log::set_max_level(LevelFilter::Error);
+
+    std::fs::remove_file("/tmp/log_test.log").expect("remove log file");
+    // setup once again, checksum is the same, should trigger open() on file and reset the log level.
+
+    let mut builder = recipe::raw_file_logger("/tmp/log_test.log", Level::Debug);
+    builder.dynamic = true;
+    clear_test_files(&builder);
+    builder.build().expect("setup_log");
+    debug!("test1 {}", "debug");
+    info!("test2");
+    error!("test3_error {}", "hahah");
+    let debug_logs = parse_log("/tmp/log_test.log", RE_DEBUG).expect("parse log");
+    assert_eq!(debug_logs.len(), 3);
+    assert_eq!(debug_logs[0][2], "DEBUG");
+    assert_eq!(debug_logs[0][3], "global_log.rs");
+    assert_eq!(debug_logs[0][5], "test1 debug");
+    assert_eq!(debug_logs[1][2], "INFO");
+    assert_eq!(debug_logs[1][5], "test2");
+    assert_eq!(debug_logs[2][5], "test3_error hahah");
+    assert_eq!(debug_logs[2][2], "ERROR");
+}
+
+#[test]
 fn test_global_log_assert_without_msg() {
     lock_file!();
 
