@@ -193,14 +193,14 @@ enum Msg {
 }
 
 pub(crate) struct LogSinkSyslog {
-    tx: MTx<Msg>,
+    tx: MTx<mpsc::Array<Msg>>,
     format: Formatter3164,
     max_level: Level,
 }
 
 impl LogSinkSyslog {
     fn new(config: &Syslog) -> Self {
-        let (tx, rx) = mpsc::bounded_blocking(100);
+        let (tx, rx) = mpsc::bounded_blocking(256);
 
         macro_rules! fill_format {
             ($f: expr, $config: expr) => {{
@@ -391,7 +391,7 @@ impl Backend {
         }
     }
 
-    fn run(&mut self, rx: Rx<Msg>) {
+    fn run(&mut self, rx: Rx<mpsc::Array<Msg>>) {
         loop {
             match rx.recv() {
                 Ok(Msg::Line(_msg)) => {

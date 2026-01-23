@@ -13,7 +13,7 @@ use std::sync::{Arc, Once};
 use std::time::{Duration, SystemTime};
 
 use crate::file_impl::open_file;
-use crossfire::{MTx, RecvTimeoutError, Rx};
+use crossfire::{mpsc, MTx, RecvTimeoutError, Rx};
 use std::thread;
 
 /// Limit to 4k buf size, so that during reload or graceful restart,
@@ -155,12 +155,12 @@ pub(crate) struct LogSinkBufFile {
     // raw fd only valid before original File close, use ArcSwap to prevent drop while using.
     formatter: LogFormat,
     _th: thread::JoinHandle<()>,
-    tx: MTx<Msg>,
+    tx: MTx<mpsc::Array<Msg>>,
 }
 
 impl LogSinkBufFile {
     fn new(config: &LogBufFile) -> Self {
-        let (tx, rx) = crossfire::mpsc::bounded_blocking(100);
+        let (tx, rx) = mpsc::bounded_blocking(1024);
 
         let mut flush_millis = config.flush_millis;
         if flush_millis == 0 || flush_millis > 1000 {
@@ -316,7 +316,7 @@ impl BufFileInner {
         }
     }
 
-    fn log_writer(&mut self, rx: Rx<Msg>) {
+    fn log_writer(&mut self, rx: Rx<mpsc::Array<Msg>>) {
         self.reopen();
         self.check_rotate();
 
