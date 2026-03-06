@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.15.4] 2026-03-06
+
+- expose macro do_log_filter!
+
 ## [0.15.2] 2026-01-23
 
 ### Changed
