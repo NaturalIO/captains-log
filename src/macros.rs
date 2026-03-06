@@ -1,4 +1,3 @@
-#[doc(hidden)]
 #[macro_export]
 macro_rules! do_log_filter {
     (target: $target:expr, $log_filter:expr, $lvl:expr, $($arg:tt)+) => ({
