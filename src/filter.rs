@@ -19,7 +19,9 @@
 //! See the doc of [KeyFilter] for details.
 
 use std::{
-    fmt, str,
+    fmt,
+    ops::Deref,
+    str,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -226,6 +228,14 @@ pub struct KeyFilter<T> {
     inner: T,
     key: &'static str,
     value: String,
+}
+
+impl<T> Deref for KeyFilter<T> {
+    type Target = T;
+    #[inline]
+    fn deref(&self) -> &T {
+        &self.inner
+    }
 }
 
 impl<T> KeyFilter<T> {
