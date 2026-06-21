@@ -30,7 +30,7 @@ use std::{
 
 use log::{kv::*, *};
 
-pub trait Filter {
+pub trait Filter: log::kv::Source {
     /// whether a log level is enable
     fn is_enabled(&self, _level: Level) -> bool;
 
@@ -69,7 +69,7 @@ impl<T: Filter> Filter for &T {
 
 /// `LogFilter` supports concurrent control the log level filter with atomic.
 ///
-/// Used in combine with macros logger_XXX. the log level filter can be dynamic changed.
+/// Usually wrapped with Arc, used in combine with macros logger_XXX. the log level filter can be dynamic changed.
 ///
 /// # Example
 ///
@@ -87,12 +87,6 @@ impl<T: Filter> Filter for &T {
 /// ```
 pub struct LogFilter {
     max_level: AtomicUsize,
-}
-
-impl Clone for LogFilter {
-    fn clone(&self) -> Self {
-        Self { max_level: AtomicUsize::new(self.get_level()) }
-    }
 }
 
 impl LogFilter {
