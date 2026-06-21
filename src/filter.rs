@@ -23,7 +23,7 @@ use std::{
     ops::Deref,
     str,
     sync::{
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicU8, Ordering},
         Arc,
     },
 };
@@ -86,22 +86,22 @@ impl<T: Filter> Filter for &T {
 /// logger_error!(logger_req, "Req invalid ...");
 /// ```
 pub struct LogFilter {
-    max_level: AtomicUsize,
+    max_level: AtomicU8,
 }
 
 impl LogFilter {
     pub fn new() -> Self {
-        Self { max_level: AtomicUsize::new(Level::Trace as usize) }
+        Self { max_level: AtomicU8::new(Level::Trace as u8) }
     }
 
     /// When LogFilter is shared in Arc, allows concurrently changing log level filter
     #[inline]
     pub fn set_level(&self, level: Level) {
-        self.max_level.store(level as usize, Ordering::Relaxed);
+        self.max_level.store(level as u8, Ordering::Relaxed);
     }
 
     #[inline]
-    pub fn get_level(&self) -> usize {
+    pub fn get_level(&self) -> u8 {
         self.max_level.load(Ordering::Relaxed)
     }
 }
@@ -109,7 +109,7 @@ impl LogFilter {
 impl Filter for LogFilter {
     #[inline(always)]
     fn is_enabled(&self, level: Level) -> bool {
-        level as usize <= self.max_level.load(Ordering::Relaxed)
+        level as u8 <= self.max_level.load(Ordering::Relaxed)
     }
 }
 
