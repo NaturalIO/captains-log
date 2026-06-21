@@ -85,8 +85,8 @@ fn test_logger_filter_key_logger() {
 
     builder.build().expect("setup_log");
 
-    // Test KeyLogger
-    let logger = KeyLogger::new("req_id", format!("{:016x}", 123).to_string());
+    // Test KeyFilter + DummyFilter
+    let logger = KeyFilter::new("req_id", format!("{:016x}", 123).to_string());
     logger_debug!(logger, "captain's log");
     warn!("fleet broadcast");
 

@@ -28,7 +28,10 @@ use std::{
     },
 };
 
-use log::{kv::*, *};
+use log::{
+    kv::{Error, Key, ToKey, Value, VisitSource},
+    *,
+};
 
 pub trait Filter: log::kv::Source {
     /// whether a log level is enable
@@ -115,7 +118,54 @@ impl Filter for LogFilter {
 
 impl log::kv::Source for LogFilter {
     #[inline(always)]
-    fn visit<'kvs>(&'kvs self, _visitor: &mut dyn Visitor<'kvs>) -> Result<(), Error> {
+    fn visit<'kvs>(&'kvs self, _visitor: &mut dyn VisitSource<'kvs>) -> Result<(), Error> {
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn get<'a>(&'a self, _key: Key) -> Option<Value<'a>> {
+        return None;
+    }
+
+    #[inline(always)]
+    fn count(&self) -> usize {
+        0
+    }
+}
+
+/// GlobalFilter use static reference to AtomicU8 to avoid cloning cost of `Arc<LogFilter>`
+#[derive(Clone)]
+pub struct GlobalFilter {
+    max_level: &'static AtomicU8,
+}
+
+impl GlobalFilter {
+    pub fn new(max_level: &'static AtomicU8) -> Self {
+        Self { max_level }
+    }
+
+    /// When LogFilter is shared in Arc, allows concurrently changing log level filter
+    #[inline]
+    pub fn set_level(&self, level: Level) {
+        self.max_level.store(level as u8, Ordering::Relaxed);
+    }
+
+    #[inline]
+    pub fn get_level(&self) -> u8 {
+        self.max_level.load(Ordering::Relaxed)
+    }
+}
+
+impl Filter for GlobalFilter {
+    #[inline(always)]
+    fn is_enabled(&self, level: Level) -> bool {
+        level as u8 <= self.max_level.load(Ordering::Relaxed)
+    }
+}
+
+impl log::kv::Source for GlobalFilter {
+    #[inline(always)]
+    fn visit<'kvs>(&'kvs self, _visitor: &mut dyn VisitSource<'kvs>) -> Result<(), Error> {
         Ok(())
     }
 
@@ -150,7 +200,7 @@ impl Filter for DummyFilter {
 
 impl log::kv::Source for DummyFilter {
     #[inline(always)]
-    fn visit<'kvs>(&'kvs self, _visitor: &mut dyn Visitor<'kvs>) -> Result<(), Error> {
+    fn visit<'kvs>(&'kvs self, _visitor: &mut dyn VisitSource<'kvs>) -> Result<(), Error> {
         Ok(())
     }
 
@@ -217,14 +267,32 @@ impl log::kv::Source for DummyFilter {
 /// let logger = KeyFilter::with(&filter, "req_id", format!("{:016x}", 123).to_string());
 /// logger_debug!(logger, "Req / received");
 /// ```
-#[derive(Clone)]
-pub struct KeyFilter<T> {
+pub struct KeyFilter<T, V>
+where
+    T: Filter,
+    V: log::kv::ToValue,
+{
     inner: T,
     key: &'static str,
-    value: String,
+    value: V,
 }
 
-impl<T> Deref for KeyFilter<T> {
+impl<T, V> Clone for KeyFilter<T, V>
+where
+    T: Filter + Clone,
+    V: log::kv::ToValue + Clone,
+{
+    #[inline]
+    fn clone(&self) -> Self {
+        Self { inner: self.inner.clone(), key: self.key, value: self.value.clone() }
+    }
+}
+
+impl<T, V> Deref for KeyFilter<T, V>
+where
+    T: Filter,
+    V: log::kv::ToValue,
+{
     type Target = T;
     #[inline]
     fn deref(&self) -> &T {
@@ -232,23 +300,31 @@ impl<T> Deref for KeyFilter<T> {
     }
 }
 
-impl<T> KeyFilter<T> {
+impl<T, V> KeyFilter<T, V>
+where
+    T: Filter,
+    V: log::kv::ToValue,
+{
     #[inline]
-    pub fn with(inner: T, key: &'static str, value: String) -> Self {
+    pub fn with(inner: T, key: &'static str, value: V) -> Self {
         Self { inner, key, value }
     }
 }
 
-impl<T> log::kv::Source for KeyFilter<T> {
+impl<T, V> log::kv::Source for KeyFilter<T, V>
+where
+    T: Filter,
+    V: log::kv::ToValue,
+{
     #[inline(always)]
-    fn visit<'kvs>(&'kvs self, visitor: &mut dyn Visitor<'kvs>) -> Result<(), Error> {
-        visitor.visit_pair(self.key.to_key(), self.value.as_str().into())
+    fn visit<'kvs>(&'kvs self, visitor: &mut dyn VisitSource<'kvs>) -> Result<(), Error> {
+        visitor.visit_pair(self.key.to_key(), self.value.to_value())
     }
 
     #[inline(always)]
     fn get<'a>(&'a self, key: Key) -> Option<Value<'a>> {
         if key.as_ref() == self.key {
-            return Some(self.value.as_str().into());
+            return Some(self.value.to_value());
         }
         return None;
     }
@@ -259,7 +335,11 @@ impl<T> log::kv::Source for KeyFilter<T> {
     }
 }
 
-impl<T: Filter> Filter for KeyFilter<T> {
+impl<T, V> Filter for KeyFilter<T, V>
+where
+    T: Filter,
+    V: log::kv::ToValue,
+{
     #[inline(always)]
     fn is_enabled(&self, level: Level) -> bool {
         self.inner.is_enabled(level)
@@ -272,6 +352,7 @@ impl<T: Filter> Filter for KeyFilter<T> {
         &self, args: fmt::Arguments, level: Level,
         &(target, module_path, file, line): &(&str, &str, &str, u32),
     ) {
+        // Add key_values, which LogFilter does not.
         let record = RecordBuilder::new()
             .level(level)
             .target(target)
@@ -285,12 +366,12 @@ impl<T: Filter> Filter for KeyFilter<T> {
     }
 }
 
-/// Apply the keyed log format without a wrapper
-pub type KeyLogger = KeyFilter<DummyFilter>;
-
-impl KeyFilter<DummyFilter> {
+impl<V> KeyFilter<DummyFilter, V>
+where
+    V: log::kv::ToValue,
+{
     #[inline]
-    pub fn new(key: &'static str, value: String) -> Self {
+    pub fn new(key: &'static str, value: V) -> Self {
         Self { inner: DummyFilter(), key, value }
     }
 }

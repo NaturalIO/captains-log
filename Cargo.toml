@@ -15,7 +15,7 @@ for production and testing scenario.
 """
 
 [dependencies]
-log = { version = "0.4", features = ["std", "kv_unstable"] }
+log = { version = "0.4.33", features = ["std", "kv"] }
 signal-hook = { version = "0" }
 libc = { version= "0" }
 chrono = "0.4"

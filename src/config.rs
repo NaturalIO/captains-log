@@ -175,7 +175,6 @@ impl LogFormat {
     /// let log_format = LogFormat::new("%Y-%m-%d %H:%M:%S%.6f", format_f);
     /// let log_sink = LogRawFile::new("/tmp", "test.log", log::Level::Info, log_format);
     /// ```
-
     pub const fn new(time_fmt: &'static str, format_fn: FormatFunc) -> Self {
         Self { time_fmt, format_fn }
     }
