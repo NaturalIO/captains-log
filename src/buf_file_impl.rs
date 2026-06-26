@@ -100,7 +100,7 @@ impl LogBufFile {
     ///    - default to 0, means always flush when no more message to write.
     ///
     ///    - when larger than zero, will wait for new message when timeout occur.
-    /// The max value is 1000 (1 sec).
+    ///      The max value is 1000 (1 sec).
     pub fn new<P1, P2>(
         dir: P1, file_name: P2, level: Level, format: LogFormat, flush_millis: usize,
     ) -> Self
@@ -266,10 +266,8 @@ impl BufFileInner {
     }
 
     fn write(&mut self, mut s: Vec<u8>) {
-        if self.buf.len() + s.len() > self.flush_size {
-            if self.buf.len() > 0 {
-                self.flush(false);
-            }
+        if self.buf.len() + s.len() > self.flush_size && !self.buf.is_empty() {
+            self.flush(false);
         }
         self.buf.reserve(s.len());
         self.buf.append(&mut s);
@@ -291,7 +289,7 @@ impl BufFileInner {
         if let Some(f) = self.f.as_ref() {
             self.size += self.buf.len() as u64;
             // Use unbuffered I/O to ensure the write ok
-            let mut p = self.buf.as_ptr() as *const u8;
+            let mut p = self.buf.as_ptr();
             let mut l = self.buf.len();
             loop {
                 let r = unsafe {

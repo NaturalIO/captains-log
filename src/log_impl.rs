@@ -192,12 +192,10 @@ pub fn setup_log(builder: Builder) -> Result<&'static GlobalLogger, Error> {
             }
         }
         let signals = builder.rotation_signals.clone();
-        if signals.len() > 0 {
-            if false == logger.signal_listener.swap(true, Ordering::SeqCst) {
-                thread::spawn(move || {
-                    GLOBAL_LOGGER.get_logger().listener_for_signal(signals);
-                });
-            }
+        if !signals.is_empty() && !logger.signal_listener.swap(true, Ordering::SeqCst) {
+            thread::spawn(move || {
+                GLOBAL_LOGGER.get_logger().listener_for_signal(signals);
+            });
         }
         Ok(logger)
     } else {

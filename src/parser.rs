@@ -29,6 +29,7 @@ pub struct LogParserLineIter {
 impl Iterator for LogParserLineIter {
     type Item = IoResult<Vec<String>>;
 
+    #[allow(clippy::needless_late_init)]
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         loop {

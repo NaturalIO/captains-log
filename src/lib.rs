@@ -22,12 +22,12 @@
 //!
 //!     + `Syslog`: (feature `syslog`), usage: [syslog]
 //!
-//!         Write to local or remote syslog server, with timeout and auto reconnect.
+//!       Write to local or remote syslog server, with timeout and auto reconnect.
 //!
 //!     + `LogRingFile`: (feature `ringfile`), usage: [ringfile]
 //!
-//!         For deadlock / race condition debugging, collect log to ring buffer in memory, flush on
-//!         panic, or triggered by signal.
+//!       For deadlock / race condition debugging, collect log to ring buffer in memory, flush on
+//!       panic, or triggered by signal.
 //!
 //! * Provide panic hook by default.
 //!

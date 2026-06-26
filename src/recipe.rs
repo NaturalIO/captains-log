@@ -11,7 +11,7 @@ use std::path;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub const DEFAULT_TIME: &'static str = "%Y-%m-%d %H:%M:%S%.6f";
+pub const DEFAULT_TIME: &str = "%Y-%m-%d %H:%M:%S%.6f";
 
 /// [{time}][{level}][{file}:{line}] {msg}
 pub const LOG_FORMAT_DEBUG: LogFormat = LogFormat::new(DEFAULT_TIME, debug_format_f);
@@ -99,7 +99,7 @@ pub fn env_logger(file_env_name: &str, level_env_name: &str) -> Builder {
     if let Ok(file_path) = std::env::var(file_env_name) {
         if let Ok(target) = ConsoleTarget::from_str(file_path.as_str()) {
             console = Some(target);
-        } else if file_path.len() > 0 {
+        } else if !file_path.is_empty() {
             return raw_file_logger(file_path, level).test();
         }
     }

@@ -138,7 +138,7 @@ impl LogSinkTrait for LogSinkFile {
                 // Get a stable buffer,
                 // for concurrently write to file from multi process.
                 let buf = self.formatter.process(now, r);
-                let mut p = buf.as_ptr() as *const u8;
+                let mut p = buf.as_ptr();
                 let mut l = buf.len();
                 loop {
                     let r = unsafe {

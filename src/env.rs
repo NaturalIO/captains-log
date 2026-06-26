@@ -63,23 +63,23 @@ pub fn env_or<'a, T>(name: &'a str, default: T) -> EnvVarDefault<'a, T> {
     EnvVarDefault { name, default }
 }
 
-impl<'a> Into<String> for EnvVarDefault<'a, &'a str> {
-    fn into(self) -> String {
-        if let Ok(v) = std::env::var(&self.name) {
+impl<'a> From<EnvVarDefault<'a, &'a str>> for String {
+    fn from(val: EnvVarDefault<'a, &'a str>) -> Self {
+        if let Ok(v) = std::env::var(val.name) {
             return v;
         }
-        return self.default.to_string();
+        return val.default.to_string();
     }
 }
 
-impl<'a, P: AsRef<Path>> Into<PathBuf> for EnvVarDefault<'a, P> {
-    fn into(self) -> PathBuf {
-        if let Some(v) = std::env::var_os(&self.name) {
-            if v.len() > 0 {
+impl<'a, P: AsRef<Path>> From<EnvVarDefault<'a, P>> for PathBuf {
+    fn from(val: EnvVarDefault<'a, P>) -> Self {
+        if let Some(v) = std::env::var_os(val.name) {
+            if !v.is_empty() {
                 return PathBuf::from(v);
             }
         }
-        return self.default.as_ref().to_path_buf();
+        return val.default.as_ref().to_path_buf();
     }
 }
 
