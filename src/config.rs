@@ -24,11 +24,18 @@ pub struct Builder {
     /// NOTE: Once logger started to listen signal, does not support dynamic reconfigure.
     pub rotation_signals: Vec<i32>,
 
-    /// Hookup to log error when panic
-    pub panic: bool,
+    /// default to true we will hookup to log error when panic, but panic will go on (which works
+    /// with test cases has `should_panic`)
+    pub panic_hook: bool,
 
-    /// Whether to exit program after panic
-    pub continue_when_panic: bool,
+    /// By default this is false,
+    /// and panic hook will not consume the error (which works with should_panic).
+    /// If set to true, it will force a double panic which cannot be intercept by catch_unwind.
+    /// It's useful to force abort on panic under tokio spawn tasks.
+    ///
+    /// Note that there's only one effective panic hook by default. The later once will override
+    /// those set previously.
+    pub force_abort_on_panic: bool,
 
     /// Different types of log sink
     pub sinks: Vec<Box<dyn SinkConfigTrait>>,
@@ -41,7 +48,7 @@ pub struct Builder {
 
 impl Builder {
     pub fn new() -> Self {
-        Self::default()
+        Self { panic_hook: true, ..Default::default() }
     }
 
     /// subscribe to tracing as global dispatcher
@@ -50,6 +57,27 @@ impl Builder {
     #[inline]
     pub fn tracing_global(mut self) -> Self {
         self.tracing_global = true;
+        self
+    }
+
+    /// do not log error on panic
+    pub fn no_panic_hook(mut self) -> Self {
+        self.panic_hook = false;
+        self
+    }
+
+    /// By default this is false, and panic hook will not consume the error (which works with should_panic).
+    /// If `force_abort_on_panic` set to true, it will force a double panic which cannot be intercept by catch_unwind.
+    /// It's useful to force abort on panic under tokio spawn tasks.
+    ///
+    /// # NOTE
+    ///
+    /// this does not compatible with `should_panic` test cases.
+    ///
+    /// there's only one effective panic hook by default. The later once will override
+    /// those set previously.
+    pub fn force_abort_on_panic(mut self) -> Self {
+        self.force_abort_on_panic = true;
         self
     }
 
@@ -95,8 +123,8 @@ impl Builder {
         let mut hasher = Box::new(DefaultHasher::new()) as Box<dyn Hasher>;
         self.dynamic.hash(&mut hasher);
         self.rotation_signals.hash(&mut hasher);
-        self.panic.hash(&mut hasher);
-        self.continue_when_panic.hash(&mut hasher);
+        self.panic_hook.hash(&mut hasher);
+        self.force_abort_on_panic.hash(&mut hasher);
         for sink in &self.sinks {
             sink.write_hash(&mut hasher);
         }

@@ -181,11 +181,15 @@ pub fn setup_log(builder: Builder) -> Result<&'static GlobalLogger, Error> {
             return Err(Error::other(format!("log::set_logger() failed: {:?}", e)));
         }
         log::set_max_level(builder.get_max_level());
-        // panic hook can be set multiple times
-        if builder.continue_when_panic {
-            std::panic::set_hook(Box::new(panic_no_exit_hook));
-        } else {
-            std::panic::set_hook(Box::new(panic_and_exit_hook));
+        if builder.panic_hook {
+            // panic hook can be set multiple times
+            // there's only one effective panic hook by default. The later once will override
+            // those set previously.
+            if !builder.force_abort_on_panic {
+                std::panic::set_hook(Box::new(panic_hook_log));
+            } else {
+                std::panic::set_hook(Box::new(panic_hook_force_exit));
+            }
         }
         let signals = builder.rotation_signals.clone();
         if signals.len() > 0 {
@@ -462,7 +466,7 @@ pub fn log_panic(info: &std::panic::PanicHookInfo) {
 }
 
 #[inline(always)]
-fn panic_and_exit_hook(info: &std::panic::PanicHookInfo) {
+fn panic_hook_force_exit(info: &std::panic::PanicHookInfo) {
     log_panic(info);
     log::logger().flush();
     let msg = format!("{}", info).to_string();
@@ -470,8 +474,7 @@ fn panic_and_exit_hook(info: &std::panic::PanicHookInfo) {
 }
 
 #[inline(always)]
-fn panic_no_exit_hook(info: &std::panic::PanicHookInfo) {
+fn panic_hook_log(info: &std::panic::PanicHookInfo) {
     log_panic(info);
-    eprint!("not debug version, so don't exit process");
     log::logger().flush();
 }

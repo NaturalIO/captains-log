@@ -118,7 +118,6 @@ fn test_global_log_assert_without_msg() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_test", Level::Debug);
-    builder.continue_when_panic = false;
     builder.dynamic = true;
     clear_test_files(&builder);
     builder.build().expect("setup_log");
@@ -140,7 +139,6 @@ fn test_global_log_assert_with_msg() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_test", Level::Debug);
-    builder.continue_when_panic = false;
     builder.dynamic = true;
     clear_test_files(&builder);
     builder.build().expect("setup_log");
@@ -165,7 +163,6 @@ fn test_global_log_assert_eq_without_msg() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_test", Level::Debug);
-    builder.continue_when_panic = false;
     builder.dynamic = true;
     clear_test_files(&builder);
     builder.build().expect("setup_log");
@@ -190,7 +187,6 @@ fn test_global_log_assert_eq_with_msg() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_test", Level::Debug);
-    builder.continue_when_panic = false;
     builder.dynamic = true;
     clear_test_files(&builder);
     builder.build().expect("setup_log");
@@ -216,7 +212,6 @@ fn test_global_log_debug_assert_without_msg() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_test", Level::Debug);
-    builder.continue_when_panic = false;
     builder.dynamic = true;
     clear_test_files(&builder);
     builder.build().expect("setup_log");
@@ -249,7 +244,6 @@ fn test_global_log_debug_assert_with_msg() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_test", Level::Debug);
-    builder.continue_when_panic = false;
     builder.dynamic = true;
     clear_test_files(&builder);
     builder.build().expect("setup_log");
@@ -282,7 +276,6 @@ fn test_global_log_debug_assert_eq_without_msg() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_test", Level::Debug);
-    builder.continue_when_panic = false;
     builder.dynamic = true;
     clear_test_files(&builder);
     builder.build().expect("setup_log");
@@ -318,7 +311,6 @@ fn test_global_log_debug_assert_eq_with_msg() {
     lock_file!();
 
     let mut builder = split_error_file_logger("/tmp", "log_test", Level::Debug);
-    builder.continue_when_panic = false;
     builder.dynamic = true;
     clear_test_files(&builder);
     builder.build().expect("setup_log");
