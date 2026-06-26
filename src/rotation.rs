@@ -275,7 +275,7 @@ impl LogRotate {
                 need_rotate = true;
             }
         }
-        if need_rotate == false {
+        if !need_rotate {
             return false;
         }
         self.wait();
@@ -394,7 +394,12 @@ fn compress(path: &Path) -> io::Result<()> {
     let dest_path = PathBuf::from(format!("{}.gz", path.display()));
 
     let mut src_file = File::open(path)?;
-    let dest_file = OpenOptions::new().write(true).create(true).append(false).open(&dest_path)?;
+    let dest_file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .append(false)
+        .open(&dest_path)?;
 
     assert!(path.exists());
     assert!(dest_path.exists());
@@ -428,7 +433,7 @@ impl<S: SuffixScheme> _Backend<S> {
     #[inline]
     fn ensure_dir(&self) {
         if !self.archive_dir.exists() {
-            let _ = fs::create_dir_all(&self.archive_dir).expect("create dir");
+            fs::create_dir_all(&self.archive_dir).expect("create dir");
         }
     }
 
