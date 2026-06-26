@@ -15,7 +15,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.16.0] 2026-06-26
+
+### Added
+
+- filter: Add GlobalFilter
+
+### Changed
+
+- config: `Replace continue_on_error` with `force_abort_on_panic`.
+  By default force_abort_on_panic set to false, because it does not compatible with `#[should_panic]` in tests
+
+- filter: Change KeyFilter trait to generic (not just string). Implement KeyFilter only when T & V can clone.
+
+- filter: Remove Clone of LogFilter
+
+- filter: level should use AtomicU8 instead of AtomicUsize
+
+### Fixed
+
+- rotation: Fix missing truncate with create
+
 ## [0.15.4] 2026-03-06
+
+### Added
 
 - expose macro do_log_filter!
 
