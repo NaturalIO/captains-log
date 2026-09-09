@@ -123,7 +123,7 @@ impl LogSinkTrait for LogSinkFile {
                 Ok(())
             }
             Err(e) => {
-                eprintln!("open logfile {:#?} failed: {:?}", &self.path, e);
+                eprintln!("open logfile {:#?} failed: {:?}", self.path, e);
                 Err(e)
             }
         }

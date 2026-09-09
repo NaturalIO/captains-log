@@ -260,7 +260,7 @@ impl BufFileInner {
                 self.f.replace(f);
             }
             Err(e) => {
-                eprintln!("open logfile {:#?} failed: {:?}", &self.path, e);
+                eprintln!("open logfile {:#?} failed: {:?}", self.path, e);
             }
         }
     }
