@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.16.1] 2026-09-09
+
+### Fixed
+
+- Fix Builder::default(): Should set panic_hook to true.
+
 ## [0.16.0] 2026-06-26
 
 ### Added
