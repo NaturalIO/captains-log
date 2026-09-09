@@ -54,7 +54,7 @@ pub fn prod_format_f(r: FormatRecord) -> String {
 
 pub fn console_logger(target: ConsoleTarget, max_level: Level) -> Builder {
     let console_config = LogConsole::new(target, max_level, LOG_FORMAT_DEBUG);
-    return Builder::default().add_sink(console_config);
+    return Builder::new().add_sink(console_config);
 }
 
 /// Output to stdout with LOG_FORMAT_DEBUG, with dynamic=true.
@@ -126,7 +126,7 @@ pub fn raw_file_logger_custom<P: Into<PathBuf>>(
     let dir = p.parent().unwrap();
     let file_name = Path::new(p.file_name().unwrap());
     let file = LogRawFile::new(dir, file_name, max_level, format);
-    return Builder::default().signal(signal_hook::consts::SIGUSR1).add_sink(file);
+    return Builder::new().signal(signal_hook::consts::SIGUSR1).add_sink(file);
 }
 
 /// Setup one log file.
@@ -163,7 +163,7 @@ where
     let err_file_name = format!("{}.log.wf", _name);
     let error_file = LogRawFile::new(_dir.clone(), err_file_name, Level::Error, LOG_FORMAT_PROD);
 
-    return Builder::default()
+    return Builder::new()
         .signal(signal_hook::consts::SIGUSR1)
         .add_sink(debug_file)
         .add_sink(error_file);
@@ -195,7 +195,7 @@ pub fn buffered_file_logger_custom<P: Into<PathBuf>>(
     if let Some(ro) = rotate {
         file = file.rotation(ro);
     }
-    return Builder::default().signal(signal_hook::consts::SIGUSR1).add_sink(file);
+    return Builder::new().signal(signal_hook::consts::SIGUSR1).add_sink(file);
 }
 
 /// Setup one buffered log file, with flush_millis set to 0
@@ -236,7 +236,7 @@ pub fn buffered_rotated_file_logger<P: Into<PathBuf>>(
 #[cfg_attr(docsrs, doc(cfg(feature = "syslog")))]
 pub fn syslog_local(facility: syslog::Facility, max_level: Level) -> Builder {
     let syslog = syslog::Syslog::new(facility, max_level);
-    return Builder::default().add_sink(syslog);
+    return Builder::new().add_sink(syslog);
 }
 
 /// Initialize a ring buffer to hold the log. For complete usage, refer to the doc in [ringfile].
@@ -261,7 +261,7 @@ pub fn ring_file<P: Into<PathBuf>>(
 ) -> Builder {
     let ring =
         ringfile::LogRingFile::new(file_path, buf_size, max_level, LOG_FORMAT_THREADED_DEBUG);
-    let mut config = Builder::default().signal(dump_signal).add_sink(ring);
+    let mut config = Builder::new().signal(dump_signal).add_sink(ring);
     config.dynamic = true;
     config
 }

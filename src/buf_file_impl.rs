@@ -55,7 +55,7 @@ const FLUSH_SIZE_DEFAULT: usize = 4096;
 ///     if let Some(ro) = rotate {
 ///         file = file.rotation(ro);
 ///     }
-///     return Builder::default().signal(signal_hook::consts::SIGUSR1).add_sink(file);
+///     return Builder::new().signal(signal_hook::consts::SIGUSR1).add_sink(file);
 /// }
 ///```
 #[derive(Hash)]

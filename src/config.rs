@@ -10,7 +10,6 @@ use std::path::Path;
 
 /// Global config to setup logger
 /// See crate::recipe for usage
-#[derive(Default)]
 pub struct Builder {
     /// When dynamic==true,
     ///   Can safely re-initialize GlobalLogger even it exists,
@@ -46,9 +45,25 @@ pub struct Builder {
     pub tracing_global: bool,
 }
 
+impl Default for Builder {
+    #[inline]
+    fn default() -> Self {
+        Builder::new()
+    }
+}
+
 impl Builder {
+    #[inline]
     pub fn new() -> Self {
-        Self { panic_hook: true, ..Default::default() }
+        Self {
+            panic_hook: true,
+            dynamic: false,
+            rotation_signals: Vec::new(),
+            force_abort_on_panic: false,
+            sinks: Vec::new(),
+            #[cfg(feature = "tracing")]
+            tracing_global: false,
+        }
     }
 
     /// subscribe to tracing as global dispatcher

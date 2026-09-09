@@ -136,7 +136,7 @@
 //! let debug_file = LogRawFile::new(
 //!     "/tmp", "test.log", log::Level::Trace, debug_format,
 //! );
-//! let config = Builder::default()
+//! let config = Builder::new()
 //!     .signal(signal_hook::consts::SIGINT)
 //!     .add_sink(debug_file);
 //! config.build();
