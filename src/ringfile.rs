@@ -46,6 +46,9 @@
 //!
 //! ## Debugging assertions
 //!
+//! By default `Builder::new()` will set panic_hook to true, which enables log flush on panic
+//! (assertions fails triggers panic)
+//!
 //! When you debugging the reason of some unexpected assertions, it will automatically trigger the
 //! dump in our panic hook. If you want an explicit dump, you can call:
 //! ``` rust
@@ -56,7 +59,7 @@
 //!
 //! The backend is provided by [RingFile crate](https://docs.rs/ring-file). To ensure low
 //! latency, the data is handle in background thread backed by a unbounded channel.
-//! After the program hangs, or panic, log content can be safely copied from the buffer area to disk.
+//! After the program hangs, or panic (requires turning on `panic_hook`), log content can be safely copied from the buffer area to disk.
 //!
 //! Be aware that it did not use mlock to prevent memory from being swapping. (Swapping might make the
 //! code slow to prevent bug reproduction). When your memory is not enough, use a smaller buf_size and turn off the swap with `swapoff -a`.
