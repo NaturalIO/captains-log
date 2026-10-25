@@ -32,7 +32,7 @@ pub struct Builder {
     /// If set to true, it will force a double panic which cannot be intercept by catch_unwind.
     /// It's useful to force abort on panic under tokio spawn tasks.
     ///
-    /// Note that there's only one effective panic hook by default. The later once will override
+    /// Note that there's only one effective panic hook by default. The later one will override
     /// those set previously.
     pub force_abort_on_panic: bool,
 
